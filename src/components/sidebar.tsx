@@ -218,22 +218,20 @@ export function Sidebar({
                   className="w-full text-xs rounded px-2 py-1.5 outline-none"
                   style={{ background: "var(--bg-primary)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
                 />
-                <div className="flex gap-1.5">
-                  <input
-                    placeholder="KEY"
-                    value={formState.key}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, key: e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 5) }))}
-                    className="w-20 text-xs rounded px-2 py-1.5 outline-none font-mono"
-                    style={{ background: "var(--bg-primary)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
-                  />
-                  <input
-                    placeholder="Description (optional)"
-                    value={formState.description}
-                    onChange={(e) => setFormState((prev) => ({ ...prev, description: e.target.value }))}
-                    className="flex-1 text-xs rounded px-2 py-1.5 outline-none"
-                    style={{ background: "var(--bg-primary)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
-                  />
-                </div>
+                <input
+                  placeholder="KEY (e.g. PROJ)"
+                  value={formState.key}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, key: e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 5) }))}
+                  className="w-full text-xs rounded px-2 py-1.5 outline-none font-mono"
+                  style={{ background: "var(--bg-primary)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
+                />
+                <input
+                  placeholder="Description (optional)"
+                  value={formState.description}
+                  onChange={(e) => setFormState((prev) => ({ ...prev, description: e.target.value }))}
+                  className="w-full text-xs rounded px-2 py-1.5 outline-none"
+                  style={{ background: "var(--bg-primary)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
+                />
                 {formError && <p className="text-xs" style={{ color: "var(--priority-critical)" }}>{formError}</p>}
                 <div className="flex gap-1.5">
                   <button

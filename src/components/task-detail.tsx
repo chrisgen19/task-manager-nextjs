@@ -285,7 +285,8 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
       <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* LEFT: Title + Description */}
-        <div className="flex flex-col flex-1 min-w-0 overflow-y-auto px-8 py-6 gap-6">
+        <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
+        <div className="flex flex-col gap-6 w-full mx-auto py-8 px-8" style={{ maxWidth: "760px" }}>
 
           {/* Task type badge */}
           <div>
@@ -375,16 +376,21 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
             ) : (
               <div
                 onClick={() => setEditingDescription(true)}
-                className="cursor-text rounded-lg p-3 min-h-20 transition-colors"
-                style={{ border: "1px solid transparent" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.border = "1px solid var(--border-primary)"; (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.border = "1px solid transparent"; (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+                className="cursor-text rounded-lg transition-colors"
+                style={{ border: "1px solid transparent", padding: "10px 12px", minHeight: "80px" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.border = "1px solid var(--border-primary)";
+                  (e.currentTarget as HTMLDivElement).style.background = "color-mix(in srgb, var(--bg-tertiary) 40%, transparent)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.border = "1px solid transparent";
+                  (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                }}
                 title="Click to edit description"
               >
                 {task.description ? (
                   <div
-                    className="prose-sm text-sm leading-relaxed"
-                    style={{ color: "var(--text-primary)" }}
+                    className="rich-content"
                     dangerouslySetInnerHTML={{ __html: task.description }}
                   />
                 ) : (
@@ -414,6 +420,7 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         {/* RIGHT: Details panel */}
