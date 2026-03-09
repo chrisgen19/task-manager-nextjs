@@ -323,7 +323,11 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
               </div>
             ) : (
               <h1
-                onClick={() => setEditingTitle(true)}
+                onClick={() => {
+                  const selection = window.getSelection();
+                  if (selection && selection.toString().length > 0) return;
+                  setEditingTitle(true);
+                }}
                 className="text-2xl font-bold leading-tight cursor-text group flex items-start gap-2"
                 style={{ color: "var(--text-primary)" }}
                 title="Click to edit title"
@@ -378,7 +382,11 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
               </div>
             ) : (
               <div
-                onClick={() => setEditingDescription(true)}
+                onClick={() => {
+                  const selection = window.getSelection();
+                  if (selection && selection.toString().length > 0) return;
+                  setEditingDescription(true);
+                }}
                 className="cursor-text rounded-lg transition-colors"
                 style={{ border: "1px solid transparent", padding: "10px 12px", minHeight: "80px" }}
                 onMouseEnter={(e) => {
