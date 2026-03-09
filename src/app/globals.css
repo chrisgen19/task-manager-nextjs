@@ -260,3 +260,62 @@ html, body {
 .rich-content dl { margin-bottom: 1rem; }
 .rich-content dt { font-weight: 600; color: var(--text-primary); }
 .rich-content dd { margin-left: 1.5rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+
+/* ─── Tiptap editor ─────────────────────────────────────────── */
+
+/* ProseMirror body padding & cursor */
+.tiptap-body {
+  padding: 12px 14px;
+  min-height: 140px;
+  cursor: text;
+}
+
+/* Placeholder */
+.tiptap-body p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+/* Focus ring on the editor container */
+.tiptap-editor:focus-within {
+  border-color: var(--status-todo) !important;
+}
+
+/* Table cell selection highlight */
+.tiptap-body td,
+.tiptap-body th { position: relative; }
+
+.tiptap-body .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--status-in-progress) 18%, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Table column resize handle */
+.tiptap-body .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--status-todo);
+  opacity: 0;
+  cursor: col-resize;
+  z-index: 3;
+}
+.tiptap-body .column-resize-handle:hover,
+.tiptap-body.resize-cursor .column-resize-handle { opacity: 1; }
+
+/* Link */
+.tiptap-body a {
+  color: var(--status-todo);
+  text-decoration: none;
+}
+.tiptap-body a:hover { text-decoration: underline; }
