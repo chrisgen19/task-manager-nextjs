@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Priority */
+  --priority-low: #22c55e;
+  --priority-medium: #eab308;
+  --priority-high: #f97316;
+  --priority-critical: #ef4444;
+
+  /* Status */
+  --status-backlog: #6b7280;
+  --status-todo: #3b82f6;
+  --status-in-progress: #6366f1;
+  --status-review: #a855f7;
+  --status-done: #22c55e;
+
+  /* Dark theme (default) */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #334155;
+  --bg-hover: #475569;
+  --bg-active: #64748b;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-inverse: #0f172a;
+
+  --border-primary: #334155;
+  --border-secondary: #475569;
+
+  --modal-backdrop: rgba(0, 0, 0, 0.7);
+  --kanban-col-bg: #1e293b;
+  --calendar-today-bg: #1e3a5f;
+
+  --scrollbar-thumb: #475569;
+  --scrollbar-track: #1e293b;
+
+  --sidebar-width: 240px;
+  --header-height: 56px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-hover: var(--bg-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border-primary);
+  --color-accent: var(--status-todo);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--bg-active); }
+
+/* Priority badge colors */
+.priority-low    { background: color-mix(in srgb, var(--priority-low) 15%, transparent); color: var(--priority-low); border: 1px solid color-mix(in srgb, var(--priority-low) 30%, transparent); }
+.priority-medium { background: color-mix(in srgb, var(--priority-medium) 15%, transparent); color: var(--priority-medium); border: 1px solid color-mix(in srgb, var(--priority-medium) 30%, transparent); }
+.priority-high   { background: color-mix(in srgb, var(--priority-high) 15%, transparent); color: var(--priority-high); border: 1px solid color-mix(in srgb, var(--priority-high) 30%, transparent); }
+.priority-critical { background: color-mix(in srgb, var(--priority-critical) 15%, transparent); color: var(--priority-critical); border: 1px solid color-mix(in srgb, var(--priority-critical) 30%, transparent); }
+
+/* Status badge colors */
+.status-backlog     { background: color-mix(in srgb, var(--status-backlog) 15%, transparent); color: var(--status-backlog); border: 1px solid color-mix(in srgb, var(--status-backlog) 30%, transparent); }
+.status-todo        { background: color-mix(in srgb, var(--status-todo) 15%, transparent); color: var(--status-todo); border: 1px solid color-mix(in srgb, var(--status-todo) 30%, transparent); }
+.status-in-progress { background: color-mix(in srgb, var(--status-in-progress) 15%, transparent); color: var(--status-in-progress); border: 1px solid color-mix(in srgb, var(--status-in-progress) 30%, transparent); }
+.status-review      { background: color-mix(in srgb, var(--status-review) 15%, transparent); color: var(--status-review); border: 1px solid color-mix(in srgb, var(--status-review) 30%, transparent); }
+.status-done        { background: color-mix(in srgb, var(--status-done) 15%, transparent); color: var(--status-done); border: 1px solid color-mix(in srgb, var(--status-done) 30%, transparent); }
+
+/* Priority dots */
+.dot-low      { background: var(--priority-low); }
+.dot-medium   { background: var(--priority-medium); }
+.dot-high     { background: var(--priority-high); }
+.dot-critical { background: var(--priority-critical); }
+.dot-backlog    { background: var(--status-backlog); }
+.dot-todo       { background: var(--status-todo); }
+.dot-in-progress { background: var(--status-in-progress); }
+.dot-review     { background: var(--status-review); }
+.dot-done       { background: var(--status-done); }
+
+/* Rich text content display */
+.rich-content { font-size: 0.875rem; line-height: 1.6; color: var(--text-secondary); }
+.rich-content p { margin: 0 0 0.5rem; }
+.rich-content ul, .rich-content ol { padding-left: 1.25rem; margin: 0 0 0.5rem; }
+.rich-content code { background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px; font-size: 0.8125rem; }
+.rich-content pre { background: var(--bg-tertiary); padding: 0.5rem 0.75rem; border-radius: 6px; overflow-x: auto; }
+.rich-content a { color: var(--status-todo); }
+.rich-content table { border-collapse: collapse; width: 100%; margin-bottom: 0.5rem; }
+.rich-content th, .rich-content td { border: 1px solid var(--border-primary); padding: 4px 8px; text-align: left; }
+.rich-content blockquote { border-left: 3px solid var(--border-secondary); padding-left: 0.75rem; margin: 0 0 0.5rem; color: var(--text-tertiary); }

@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  reactCompiler: true,
+  // React Compiler disabled — incompatible with React Hook Form's mutable ref internals
+  reactCompiler: false,
 };
 
 export default nextConfig;
