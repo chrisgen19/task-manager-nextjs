@@ -286,7 +286,7 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
 
         {/* LEFT: Title + Description */}
         <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
-        <div className="flex flex-col gap-6 w-full mx-auto py-8 px-8" style={{ maxWidth: "760px" }}>
+        <div className="flex flex-col gap-6 w-full py-6 px-8">
 
           {/* Task type badge */}
           <div>
@@ -356,17 +356,20 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
                 <div style={{ minHeight: "180px" }}>
                   <RichTextEditor value={descValue} onChange={setDescValue} />
                 </div>
-                <div className="flex items-center gap-2 mt-2">
+                <div
+                  className="flex items-center gap-2 sticky bottom-0 py-3"
+                  style={{ background: "var(--bg-primary)" }}
+                >
                   <button
                     onClick={handleDescriptionSave}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    className="px-4 py-1.5 rounded-lg text-xs font-medium"
                     style={{ background: "var(--status-todo)", color: "#fff" }}
                   >
                     Save
                   </button>
                   <button
                     onClick={() => { setDescValue(task.description); setEditingDescription(false); }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    className="px-4 py-1.5 rounded-lg text-xs font-medium"
                     style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
                   >
                     Cancel
