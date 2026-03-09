@@ -9,14 +9,18 @@ const globalForPrisma = globalThis as unknown as {
 function getConnectionString() {
   let url = process.env.DATABASE_URL ?? "";
   if (process.env.NODE_ENV === "production") {
-    // Replace deprecated sslmode values with verify-full to suppress pg warning
-    url = url.replace(/sslmode=(prefer|require|verify-ca)/, "sslmode=verify-full");
+    // Strip sslmode from URL — SSL is configured directly on the Pool
+    url = url.replace(/[?&]sslmode=[^&]*/, "");
   }
   return url;
 }
 
 function createPrismaClient() {
-  const pool = new Pool({ connectionString: getConnectionString() });
+  const isProduction = process.env.NODE_ENV === "production";
+  const pool = new Pool({
+    connectionString: getConnectionString(),
+    ...(isProduction && { ssl: { rejectUnauthorized: true } }),
+  });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
