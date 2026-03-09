@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { TaskModal } from "./task-modal";
@@ -9,19 +10,20 @@ import { KanbanView } from "./views/kanban-view";
 import { CalendarView } from "./views/calendar-view";
 import { TimelineView } from "./views/timeline-view";
 import { ToastContainer, type Toast } from "./ui/toast";
-import type { Task, ViewType, TaskFilters, TaskSort } from "@/types";
+import type { Task, Workboard, ViewType, TaskFilters, TaskSort } from "@/types";
 import type { TaskInput } from "@/schemas";
 
 interface TaskManagerProps {
   initialTasks: Task[];
+  initialWorkboards: Workboard[];
   userName: string;
 }
 
 interface ModalState {
   open: boolean;
-  task?: Task | null;
   defaultStatus?: number;
   defaultDueDate?: string;
+  defaultWorkboardId?: string;
 }
 
 function applyFiltersAndSort(tasks: Task[], filters: TaskFilters, sort: TaskSort): Task[] {
@@ -35,12 +37,12 @@ function applyFiltersAndSort(tasks: Task[], filters: TaskFilters, sort: TaskSort
         t.description.toLowerCase().includes(q)
     );
   }
+  if (filters.workboardId) result = result.filter((t) => t.workboardId === filters.workboardId);
   if (filters.priority >= 0) result = result.filter((t) => t.priority === filters.priority);
   if (filters.status >= 0) result = result.filter((t) => t.status === filters.status);
 
   result.sort((a, b) => {
     const dir = sort.direction === "asc" ? 1 : -1;
-    // "created" maps to the actual Task field "createdAt"
     const field = sort.field === "created" ? "createdAt" : sort.field;
     const va = a[field as keyof Task];
     const vb = b[field as keyof Task];
@@ -64,19 +66,23 @@ function makeToastId() {
   return Math.random().toString(36).slice(2);
 }
 
-function normalizeTask(raw: Task): Task {
+function normalizeTask(raw: Task & { workboard?: { key: string; name: string } }): Task {
   return {
     ...raw,
+    workboardKey: raw.workboard?.key ?? raw.workboardKey ?? "",
+    workboardName: raw.workboard?.name ?? raw.workboardName ?? "",
     dueDate: raw.dueDate ? new Date(raw.dueDate).toISOString() : null,
     createdAt: new Date(raw.createdAt).toISOString(),
     updatedAt: new Date(raw.updatedAt).toISOString(),
   };
 }
 
-export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
+export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskManagerProps) {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [workboards, setWorkboards] = useState<Workboard[]>(initialWorkboards);
   const [view, setView] = useState<ViewType>("list");
-  const [filters, setFilters] = useState<TaskFilters>({ search: "", priority: -1, status: -1 });
+  const [filters, setFilters] = useState<TaskFilters>({ search: "", priority: -1, status: -1, workboardId: null });
   const [sort, setSort] = useState<TaskSort>({ field: "created", direction: "desc" });
   const [showSort, setShowSort] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
@@ -116,14 +122,19 @@ export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
 
   const openNewTask = useCallback(
     (opts?: { status?: number; dueDate?: string }) => {
-      setModal({ open: true, task: null, defaultStatus: opts?.status, defaultDueDate: opts?.dueDate });
+      setModal({
+        open: true,
+        defaultStatus: opts?.status,
+        defaultDueDate: opts?.dueDate,
+        defaultWorkboardId: filters.workboardId ?? workboards[0]?.id,
+      });
     },
-    []
+    [filters.workboardId, workboards]
   );
 
-  const openEditTask = useCallback((task: Task) => {
-    setModal({ open: true, task });
-  }, []);
+  const navigateToTask = useCallback((task: Task) => {
+    router.push(`/t/${task.workboardKey}-${task.taskNumber}`);
+  }, [router]);
 
   const closeModal = useCallback(() => {
     setModal({ open: false });
@@ -131,61 +142,41 @@ export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
 
   const handleSave = useCallback(
     async (data: TaskInput) => {
-      const isEditing = !!modal.task;
-      const url = isEditing ? `/api/tasks/${modal.task!.id}` : "/api/tasks";
-      const method = isEditing ? "PUT" : "POST";
-
       try {
-        const res = await fetch(url, {
-          method,
+        const res = await fetch("/api/tasks", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          addToast(body.error ?? "Failed to save task. Please try again.", "error");
+          addToast(body.error ?? "Failed to create task. Please try again.", "error");
           return;
         }
 
-        const saved: Task = await res.json();
+        const saved = await res.json();
         const normalized = normalizeTask(saved);
+        setTasks((prev) => [normalized, ...prev]);
 
-        if (isEditing) {
-          setTasks((prev) => prev.map((t) => (t.id === normalized.id ? normalized : t)));
-          addToast("Task updated.", "success");
-        } else {
-          setTasks((prev) => [normalized, ...prev]);
-          addToast("Task created.", "success");
-        }
+        // Update workboard taskCounter in local state
+        setWorkboards((prev) =>
+          prev.map((w) =>
+            w.id === data.workboardId ? { ...w, taskCounter: w.taskCounter + 1 } : w
+          )
+        );
+
+        addToast("Task created.", "success");
         closeModal();
+
+        // Navigate to the new task page
+        router.push(`/t/${normalized.workboardKey}-${normalized.taskNumber}`);
       } catch {
         addToast("Network error. Please check your connection.", "error");
       }
     },
-    [modal.task, closeModal, addToast]
+    [closeModal, addToast, router]
   );
-
-  const handleDelete = useCallback(async () => {
-    if (!modal.task) return;
-    const taskTitle = modal.task.title;
-
-    try {
-      const res = await fetch(`/api/tasks/${modal.task.id}`, { method: "DELETE" });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        addToast(body.error ?? "Failed to delete task.", "error");
-        return;
-      }
-
-      setTasks((prev) => prev.filter((t) => t.id !== modal.task!.id));
-      closeModal();
-      addToast(`"${taskTitle}" deleted.`, "success");
-    } catch {
-      addToast("Network error. Please check your connection.", "error");
-    }
-  }, [modal.task, closeModal, addToast]);
 
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: number) => {
@@ -194,7 +185,6 @@ export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
 
       const prevStatus = task.status;
 
-      // Optimistic update
       setTasks((prev) =>
         prev.map((t) => (t.id === taskId ? { ...t, status: newStatus as Task["status"] } : t))
       );
@@ -209,21 +199,18 @@ export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
             jiraUrl: task.jiraUrl,
             priority: task.priority,
             status: newStatus,
-            dueDate: task.dueDate
-              ? new Date(task.dueDate).toISOString().split("T")[0]
-              : null,
+            dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : null,
+            workboardId: task.workboardId,
           }),
         });
 
         if (!res.ok) {
-          // Revert optimistic update
           setTasks((prev) =>
             prev.map((t) => (t.id === taskId ? { ...t, status: prevStatus } : t))
           );
           addToast("Failed to update task status.", "error");
         }
       } catch {
-        // Revert on network error
         setTasks((prev) =>
           prev.map((t) => (t.id === taskId ? { ...t, status: prevStatus } : t))
         );
@@ -233,12 +220,32 @@ export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
     [tasks, addToast]
   );
 
+  const handleWorkboardCreate = useCallback((workboard: Workboard) => {
+    setWorkboards((prev) => [...prev, workboard]);
+  }, []);
+
+  const handleWorkboardUpdate = useCallback((workboard: Workboard) => {
+    setWorkboards((prev) => prev.map((w) => (w.id === workboard.id ? workboard : w)));
+  }, []);
+
+  const handleWorkboardDelete = useCallback((workboardId: string) => {
+    setWorkboards((prev) => prev.filter((w) => w.id !== workboardId));
+    setTasks((prev) => prev.filter((t) => t.workboardId !== workboardId));
+    if (filters.workboardId === workboardId) {
+      setFilters((prev) => ({ ...prev, workboardId: null }));
+    }
+  }, [filters.workboardId]);
+
   return (
     <>
       <Sidebar
         tasks={tasks}
+        workboards={workboards}
         filters={filters}
         onFiltersChange={setFilters}
+        onWorkboardCreate={handleWorkboardCreate}
+        onWorkboardUpdate={handleWorkboardUpdate}
+        onWorkboardDelete={handleWorkboardDelete}
         userName={userName}
       />
 
@@ -261,13 +268,13 @@ export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
               tasks={filteredTasks}
               sort={sort}
               onSortChange={setSort}
-              onEdit={openEditTask}
+              onNavigate={navigateToTask}
             />
           )}
           {view === "kanban" && (
             <KanbanView
               tasks={filteredTasks}
-              onEdit={openEditTask}
+              onNavigate={navigateToTask}
               onNewTask={(status) => openNewTask({ status })}
               onStatusChange={handleStatusChange}
             />
@@ -275,23 +282,23 @@ export function TaskManager({ initialTasks, userName }: TaskManagerProps) {
           {view === "calendar" && (
             <CalendarView
               tasks={filteredTasks}
-              onEdit={openEditTask}
+              onNavigate={navigateToTask}
               onNewTask={(dueDate) => openNewTask({ dueDate })}
             />
           )}
           {view === "timeline" && (
-            <TimelineView tasks={filteredTasks} onEdit={openEditTask} />
+            <TimelineView tasks={filteredTasks} onNavigate={navigateToTask} />
           )}
         </main>
       </div>
 
       {modal.open && (
         <TaskModal
-          task={modal.task}
+          workboards={workboards}
           defaultStatus={modal.defaultStatus}
           defaultDueDate={modal.defaultDueDate}
+          defaultWorkboardId={modal.defaultWorkboardId}
           onSave={handleSave}
-          onDelete={modal.task ? handleDelete : undefined}
           onClose={closeModal}
         />
       )}

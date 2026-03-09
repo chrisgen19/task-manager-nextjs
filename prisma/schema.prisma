@@ -8,17 +8,34 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String
-  tasks     Task[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String
+  password   String
+  workboards Workboard[]
+  tasks      Task[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Workboard {
+  id          String   @id @default(cuid())
+  name        String
+  key         String
+  description String?
+  taskCounter Int      @default(0)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, key])
 }
 
 model Task {
   id          String    @id @default(cuid())
+  taskNumber  Int
   title       String
   description String?   @db.Text
   jiraUrl     String?
@@ -26,7 +43,11 @@ model Task {
   status      Int       @default(1)
   dueDate     DateTime?
   userId      String
+  workboardId String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workboard   Workboard @relation(fields: [workboardId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@unique([workboardId, taskNumber])
 }

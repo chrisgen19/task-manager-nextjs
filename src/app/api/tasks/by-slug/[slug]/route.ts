@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+
+export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { slug } = await params;
+
+  // Parse slug: "PROJ-123" → key="PROJ", taskNumber=123
+  const match = slug.match(/^([A-Z]+)-(\d+)$/);
+  if (!match) return NextResponse.json({ error: "Invalid slug format" }, { status: 400 });
+
+  const [, key, numStr] = match;
+  const taskNumber = parseInt(numStr, 10);
+
+  const workboard = await db.workboard.findUnique({
+    where: { userId_key: { userId: session.user.id, key } },
+  });
+  if (!workboard) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const task = await db.task.findUnique({
+    where: { workboardId_taskNumber: { workboardId: workboard.id, taskNumber } },
+    include: { workboard: { select: { key: true, name: true } } },
+  });
+  if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  return NextResponse.json(task);
+}

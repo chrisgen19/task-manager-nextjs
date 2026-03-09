@@ -11,6 +11,16 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const workboardSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  key: z
+    .string()
+    .min(2, "Key must be 2–5 uppercase letters")
+    .max(5, "Key must be 2–5 uppercase letters")
+    .regex(/^[A-Z]+$/, "Key must be uppercase letters only"),
+  description: z.string().optional().default(""),
+});
+
 export const taskSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
   description: z.string().optional().default(""),
@@ -18,6 +28,7 @@ export const taskSchema = z.object({
   priority: z.number().int().min(0).max(3).default(1),
   status: z.number().int().min(0).max(4).default(1),
   dueDate: z.string().nullable().optional(),
+  workboardId: z.string().min(1, "Workboard is required"),
 });
 
 export const updateUserSchema = z.object({
@@ -29,5 +40,6 @@ export const updateUserSchema = z.object({
 
 export type RegisterInput = z.input<typeof registerSchema>;
 export type LoginInput = z.input<typeof loginSchema>;
+export type WorkboardInput = z.output<typeof workboardSchema>;
 export type TaskInput = z.output<typeof taskSchema>;
 export type UpdateUserInput = z.input<typeof updateUserSchema>;

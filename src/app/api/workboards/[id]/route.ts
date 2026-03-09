@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { taskSchema } from "@/schemas";
-import { sanitizeHtmlServer } from "@/lib/sanitize";
+import { workboardSchema } from "@/schemas";
 
-const taskInclude = {
-  workboard: { select: { key: true, name: true } },
-} as const;
-
-async function getTaskOrFail(id: string, userId: string) {
-  return db.task.findFirst({ where: { id, userId }, include: taskInclude });
+async function getWorkboardOrFail(id: string, userId: string) {
+  return db.workboard.findFirst({ where: { id, userId } });
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,10 +12,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const task = await getTaskOrFail(id, session.user.id);
-  if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const workboard = await getWorkboardOrFail(id, session.user.id);
+  if (!workboard) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json(task);
+  return NextResponse.json(workboard);
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -28,33 +23,35 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const existing = await getTaskOrFail(id, session.user.id);
+  const existing = await getWorkboardOrFail(id, session.user.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   try {
     const body = await req.json();
-    const parsed = taskSchema.safeParse(body);
+    const parsed = workboardSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { title, description, jiraUrl, priority, status, dueDate } = parsed.data;
+    const { name, key, description } = parsed.data;
 
-    const task = await db.task.update({
+    // Check key uniqueness (excluding self)
+    if (key !== existing.key) {
+      const conflict = await db.workboard.findUnique({
+        where: { userId_key: { userId: session.user.id, key } },
+      });
+      if (conflict) {
+        return NextResponse.json({ error: `Key "${key}" is already in use` }, { status: 409 });
+      }
+    }
+
+    const workboard = await db.workboard.update({
       where: { id },
-      data: {
-        title,
-        description: sanitizeHtmlServer(description ?? ""),
-        jiraUrl: jiraUrl ?? "",
-        priority,
-        status,
-        dueDate: dueDate ? new Date(dueDate) : null,
-      },
-      include: taskInclude,
+      data: { name, key, description },
     });
 
-    return NextResponse.json(task);
+    return NextResponse.json(workboard);
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -65,9 +62,9 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const existing = await getTaskOrFail(id, session.user.id);
+  const existing = await getWorkboardOrFail(id, session.user.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await db.task.delete({ where: { id } });
+  await db.workboard.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

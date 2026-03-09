@@ -3,22 +3,22 @@
 import { useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X, ExternalLink, Trash2 } from "lucide-react";
+import { X, ExternalLink } from "lucide-react";
 import { taskSchema } from "@/schemas";
 import type { TaskInput } from "@/schemas";
 import { z } from "zod";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS } from "@/types";
 import { RichTextEditor } from "./rich-text-editor";
-import type { Task } from "@/types";
+import type { Workboard } from "@/types";
 
 type TaskFormValues = z.input<typeof taskSchema>;
 
 interface TaskModalProps {
-  task?: Task | null;
+  workboards: Workboard[];
   defaultStatus?: number;
   defaultDueDate?: string;
+  defaultWorkboardId?: string;
   onSave: (data: TaskInput) => Promise<void>;
-  onDelete?: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -41,8 +41,8 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelete, onClose }: TaskModalProps) {
-  const isEditing = !!task;
+export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWorkboardId, onSave, onClose }: TaskModalProps) {
+  const firstWorkboardId = workboards[0]?.id ?? "";
 
   const {
     register,
@@ -60,6 +60,7 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
       priority: 1,
       status: defaultStatus ?? 1,
       dueDate: defaultDueDate ?? null,
+      workboardId: defaultWorkboardId ?? firstWorkboardId,
     },
   });
 
@@ -67,26 +68,16 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
   const watchedStatus = watch("status");
 
   useEffect(() => {
-    if (task) {
-      reset({
-        title: task.title,
-        description: task.description,
-        jiraUrl: task.jiraUrl,
-        priority: task.priority,
-        status: task.status,
-        dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : null,
-      });
-    } else {
-      reset({
-        title: "",
-        description: "",
-        jiraUrl: "",
-        priority: 1,
-        status: defaultStatus ?? 1,
-        dueDate: defaultDueDate ?? null,
-      });
-    }
-  }, [task, defaultStatus, defaultDueDate, reset]);
+    reset({
+      title: "",
+      description: "",
+      jiraUrl: "",
+      priority: 1,
+      status: defaultStatus ?? 1,
+      dueDate: defaultDueDate ?? null,
+      workboardId: defaultWorkboardId ?? firstWorkboardId,
+    });
+  }, [defaultStatus, defaultDueDate, defaultWorkboardId, firstWorkboardId, reset]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") onClose();
@@ -97,6 +88,41 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  if (workboards.length === 0) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: "var(--modal-backdrop)" }}
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <div
+          className="rounded-xl shadow-2xl p-8 flex flex-col items-center gap-4 text-center"
+          style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", maxWidth: "360px" }}
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "var(--bg-tertiary)" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <path d="M9 12h6M12 9v6" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Create a board first</h2>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Tasks belong to boards. Create your first board from the sidebar to get started.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm font-medium"
+            style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -119,7 +145,7 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
           style={{ borderBottom: "1px solid var(--border-primary)" }}
         >
           <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-            {isEditing ? "Edit Task" : "New Task"}
+            New Task
           </h2>
           <button
             type="button"
@@ -150,17 +176,12 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
                   placeholder="What needs to be done?"
                   autoFocus
                   className="w-full text-sm rounded-lg outline-none transition-colors"
-                  style={{
-                    ...fieldStyle,
-                    fontSize: "0.9375rem",
-                    fontWeight: 500,
-                    padding: "9px 12px",
-                  }}
+                  style={{ ...fieldStyle, fontSize: "0.9375rem", fontWeight: 500, padding: "9px 12px" }}
                   onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "var(--status-todo)"; }}
                   onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "var(--border-primary)"; }}
                 />
                 {errors.title && (
-                  <p className="text-xs mt-1.5 flex items-center gap-1" style={{ color: "var(--priority-critical)" }}>
+                  <p className="text-xs mt-1.5" style={{ color: "var(--priority-critical)" }}>
                     {errors.title.message}
                   </p>
                 )}
@@ -179,10 +200,7 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
                     name="description"
                     control={control}
                     render={({ field }) => (
-                      <RichTextEditor
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                      />
+                      <RichTextEditor value={field.value ?? ""} onChange={field.onChange} />
                     )}
                   />
                 </div>
@@ -191,6 +209,25 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
 
             {/* RIGHT: Metadata fields */}
             <div className="flex flex-col shrink-0 p-6 gap-5 overflow-y-auto" style={{ width: "240px" }}>
+
+              {/* Board */}
+              <div>
+                <Label>Board *</Label>
+                <select
+                  {...register("workboardId")}
+                  className="w-full appearance-none"
+                  style={fieldStyle}
+                >
+                  {workboards.map((w) => (
+                    <option key={w.id} value={w.id}>{w.key} — {w.name}</option>
+                  ))}
+                </select>
+                {errors.workboardId && (
+                  <p className="text-xs mt-1.5" style={{ color: "var(--priority-critical)" }}>
+                    {errors.workboardId.message}
+                  </p>
+                )}
+              </div>
 
               {/* Priority */}
               <div>
@@ -269,26 +306,6 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
                   </p>
                 )}
               </div>
-
-              {/* Spacer */}
-              <div className="flex-1" />
-
-              {/* Delete (edit mode only) */}
-              {isEditing && onDelete && (
-                <button
-                  type="button"
-                  onClick={async () => { if (confirm("Delete this task?")) await onDelete(); }}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
-                  style={{
-                    color: "var(--priority-critical)",
-                    background: "color-mix(in srgb, var(--priority-critical) 10%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--priority-critical) 20%, transparent)",
-                  }}
-                >
-                  <Trash2 size={14} />
-                  Delete task
-                </button>
-              )}
             </div>
           </div>
 
@@ -315,7 +332,7 @@ export function TaskModal({ task, defaultStatus, defaultDueDate, onSave, onDelet
                 className="px-4 py-1.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
                 style={{ background: "var(--status-todo)", color: "#fff" }}
               >
-                {isSubmitting ? "Saving…" : isEditing ? "Save changes" : "Create task"}
+                {isSubmitting ? "Creating…" : "Create task"}
               </button>
             </div>
           </div>

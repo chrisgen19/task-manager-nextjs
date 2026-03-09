@@ -11,7 +11,7 @@ const MAX_CHIPS = 3;
 
 interface CalendarViewProps {
   tasks: Task[];
-  onEdit: (task: Task) => void;
+  onNavigate: (task: Task) => void;
   onNewTask: (dueDate: string) => void;
 }
 
@@ -21,7 +21,7 @@ interface PopoverState {
   anchorRect: DOMRect;
 }
 
-export function CalendarView({ tasks, onEdit, onNewTask }: CalendarViewProps) {
+export function CalendarView({ tasks, onNavigate, onNewTask }: CalendarViewProps) {
   const [current, setCurrent] = useState(new Date());
   const [popover, setPopover] = useState<PopoverState | null>(null);
 
@@ -130,7 +130,7 @@ export function CalendarView({ tasks, onEdit, onNewTask }: CalendarViewProps) {
                   {dayTasks.slice(0, MAX_CHIPS).map((task) => (
                     <div
                       key={task.id}
-                      onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                      onClick={(e) => { e.stopPropagation(); onNavigate(task); }}
                       className={`${PRIORITY_LABELS[task.priority]} px-1.5 py-0.5 rounded text-xs truncate cursor-pointer`}
                       title={task.title}
                     >
@@ -186,7 +186,7 @@ export function CalendarView({ tasks, onEdit, onNewTask }: CalendarViewProps) {
             {popover.tasks.map((task) => (
               <div
                 key={task.id}
-                onClick={() => { onEdit(task); setPopover(null); }}
+                onClick={() => { onNavigate(task); setPopover(null); }}
                 className={`${PRIORITY_LABELS[task.priority]} px-2 py-1.5 rounded text-xs cursor-pointer flex items-center gap-1.5`}
               >
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "currentColor" }} />

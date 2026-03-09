@@ -4,8 +4,23 @@ export type ViewType = "list" | "kanban" | "calendar" | "timeline";
 export type SortField = "created" | "title" | "priority" | "status" | "dueDate";
 export type SortDirection = "asc" | "desc";
 
+export interface Workboard {
+  id: string;
+  name: string;
+  key: string;
+  description: string | null;
+  taskCounter: number;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Task {
   id: string;
+  taskNumber: number;
+  workboardId: string;
+  workboardKey: string;
+  workboardName: string;
   title: string;
   description: string;
   jiraUrl: string;
@@ -29,6 +44,7 @@ export interface TaskFilters {
   search: string;
   priority: number;
   status: number;
+  workboardId: string | null;
 }
 
 export interface TaskSort {

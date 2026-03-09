@@ -7,7 +7,7 @@ import type { Task } from "@/types";
 
 interface KanbanViewProps {
   tasks: Task[];
-  onEdit: (task: Task) => void;
+  onNavigate: (task: Task) => void;
   onNewTask: (status: number) => void;
   onStatusChange: (taskId: string, newStatus: number) => void;
 }
@@ -19,12 +19,12 @@ const PRIORITY_COLORS: Record<number, string> = {
   3: "var(--priority-critical)",
 };
 
-function KanbanCard({ task, onEdit, onDragStart }: { task: Task; onEdit: (t: Task) => void; onDragStart: (e: React.DragEvent, id: string) => void }) {
+function KanbanCard({ task, onNavigate, onDragStart }: { task: Task; onNavigate: (t: Task) => void; onDragStart: (e: React.DragEvent, id: string) => void }) {
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
-      onClick={() => onEdit(task)}
+      onClick={() => onNavigate(task)}
       className="rounded-lg p-3 cursor-pointer group relative overflow-hidden"
       style={{
         background: "var(--bg-primary)",
@@ -36,6 +36,7 @@ function KanbanCard({ task, onEdit, onDragStart }: { task: Task; onEdit: (t: Tas
     >
       {/* Priority accent */}
       <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg" style={{ background: PRIORITY_COLORS[task.priority] }} />
+      <p className="text-xs font-mono mb-0.5 pl-2" style={{ color: "var(--text-tertiary)" }}>{task.workboardKey}-{task.taskNumber}</p>
       <p className="text-sm font-medium mb-1.5 pl-2" style={{ color: "var(--text-primary)", lineHeight: 1.4 }}>{task.title}</p>
       {task.dueDate && (
         <p className="text-xs pl-2" style={{ color: "var(--text-tertiary)" }}>
@@ -46,7 +47,7 @@ function KanbanCard({ task, onEdit, onDragStart }: { task: Task; onEdit: (t: Tas
   );
 }
 
-export function KanbanView({ tasks, onEdit, onNewTask, onStatusChange }: KanbanViewProps) {
+export function KanbanView({ tasks, onNavigate, onNewTask, onStatusChange }: KanbanViewProps) {
   const draggedId = useRef<string | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
@@ -111,7 +112,7 @@ export function KanbanView({ tasks, onEdit, onNewTask, onStatusChange }: KanbanV
                 </div>
               ) : (
                 colTasks.map((task) => (
-                  <KanbanCard key={task.id} task={task} onEdit={onEdit} onDragStart={handleDragStart} />
+                  <KanbanCard key={task.id} task={task} onNavigate={onNavigate} onDragStart={handleDragStart} />
                 ))
               )}
             </div>

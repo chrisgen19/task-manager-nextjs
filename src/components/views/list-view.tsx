@@ -10,7 +10,7 @@ interface ListViewProps {
   tasks: Task[];
   sort: TaskSort;
   onSortChange: (sort: TaskSort) => void;
-  onEdit: (task: Task) => void;
+  onNavigate: (task: Task) => void;
 }
 
 function SortIcon({ field, sort }: { field: SortField; sort: TaskSort }) {
@@ -40,7 +40,7 @@ const tdStyle = {
   verticalAlign: "middle" as const,
 };
 
-export function ListView({ tasks, sort, onSortChange, onEdit }: ListViewProps) {
+export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProps) {
   const handleSort = (field: SortField) => {
     if (sort.field === field) {
       onSortChange({ field, direction: sort.direction === "asc" ? "desc" : "asc" });
@@ -64,6 +64,7 @@ export function ListView({ tasks, sort, onSortChange, onEdit }: ListViewProps) {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
           <tr>
+            <th style={{ ...thStyle, cursor: "default", width: "80px" }}>Key</th>
             <th style={thStyle} onClick={() => handleSort("priority")}>
               <span className="flex items-center gap-1">Priority <SortIcon field="priority" sort={sort} /></span>
             </th>
@@ -88,12 +89,17 @@ export function ListView({ tasks, sort, onSortChange, onEdit }: ListViewProps) {
             return (
               <tr
                 key={task.id}
-                onClick={() => onEdit(task)}
+                onClick={() => onNavigate(task)}
                 className="cursor-pointer transition-colors"
                 style={{ background: "transparent" }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--bg-secondary)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
               >
+                <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "0.75rem" }}>
+                  <span style={{ color: "var(--text-tertiary)", fontWeight: 600 }}>
+                    {task.workboardKey}-{task.taskNumber}
+                  </span>
+                </td>
                 <td style={tdStyle}>
                   <span className={`${PRIORITY_LABELS[task.priority]} px-2 py-0.5 rounded text-xs font-medium`}>
                     {PRIORITIES[task.priority]}

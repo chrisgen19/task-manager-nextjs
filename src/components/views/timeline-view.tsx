@@ -16,7 +16,7 @@ const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 
 interface TimelineViewProps {
   tasks: Task[];
-  onEdit: (task: Task) => void;
+  onNavigate: (task: Task) => void;
 }
 
 function msToDate(ms: number) {
@@ -41,7 +41,7 @@ function diffDays(a: Date, b: Date) {
   return Math.floor((dateToMs(startOfDay(b)) - dateToMs(startOfDay(a))) / 86400000);
 }
 
-export function TimelineView({ tasks, onEdit }: TimelineViewProps) {
+export function TimelineView({ tasks, onNavigate }: TimelineViewProps) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
   const timelineTasks = tasks.filter((t) => t.createdAt);
@@ -144,7 +144,7 @@ export function TimelineView({ tasks, onEdit }: TimelineViewProps) {
             {timelineTasks.map((task) => (
               <div
                 key={task.id}
-                onClick={() => onEdit(task)}
+                onClick={() => onNavigate(task)}
                 className="flex items-center gap-2 px-3 cursor-pointer"
                 style={{
                   height: ROW_HEIGHT,
@@ -211,7 +211,7 @@ export function TimelineView({ tasks, onEdit }: TimelineViewProps) {
                   )}
                   {/* Bar */}
                   <div
-                    onClick={() => onEdit(task)}
+                    onClick={() => onNavigate(task)}
                     className="absolute top-1/2 -translate-y-1/2 rounded-md cursor-pointer flex items-center px-2 text-xs font-medium overflow-hidden"
                     style={{
                       left: startOff,
