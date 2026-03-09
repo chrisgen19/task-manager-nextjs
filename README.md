@@ -170,3 +170,5 @@ The description field uses [Tiptap v3](https://tiptap.dev) with:
 - React Compiler is disabled (`reactCompiler: false`) — incompatible with React Hook Form
 - Description is sanitized server-side on every save via `src/lib/sanitize.ts`
 - `AUTH_SECRET` must be a cryptographically random string — generate with `openssl rand -base64 32`
+- **SSL (production):** `src/lib/db.ts` strips `sslmode` from `DATABASE_URL` and configures SSL directly on the `pg` Pool (`rejectUnauthorized: false`) to avoid the pg v8 deprecation warning. If your provider requires strict certificate verification, set `rejectUnauthorized: true` instead.
+- **Favicon:** `src/app/icon.svg` — blue rounded-square checkmark matching the sidebar logo. Next.js App Router serves it automatically.
