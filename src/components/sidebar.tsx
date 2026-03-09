@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { LogOut, Plus, Pencil, Trash2, X, Check, LayoutGrid } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS, type TaskFilters } from "@/types";
 import type { Task, Workboard } from "@/types";
 
@@ -418,6 +419,7 @@ export function Sidebar({
             <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{total} task{total !== 1 ? "s" : ""}</p>
           </div>
         </div>
+        <ThemeToggle />
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors"
