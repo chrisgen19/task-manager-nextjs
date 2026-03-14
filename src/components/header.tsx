@@ -105,15 +105,17 @@ export function Header({
 
         {/* Right: Subtasks toggle + Sort + New Task */}
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs cursor-pointer select-none" style={{ color: "var(--text-secondary)" }}>
-            <input
-              type="checkbox"
-              checked={showSubtasks}
-              onChange={onToggleSubtasks}
-              className="rounded"
-            />
+          <button
+            onClick={onToggleSubtasks}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: showSubtasks ? "color-mix(in srgb, var(--status-todo) 15%, transparent)" : "var(--bg-tertiary)",
+              color: showSubtasks ? "var(--status-todo)" : "var(--text-secondary)",
+              border: `1px solid ${showSubtasks ? "color-mix(in srgb, var(--status-todo) 30%, transparent)" : "var(--border-primary)"}`,
+            }}
+          >
             Subtasks
-          </label>
+          </button>
 
           <button
             onClick={onToggleSort}
