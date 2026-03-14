@@ -1,32 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
 type Theme = "dark" | "light";
 
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+let listeners: Array<() => void> = [];
+
+function emitChange() {
+  for (const listener of listeners) listener();
+}
+
+function subscribe(onStoreChange: () => void) {
+  listeners = [...listeners, onStoreChange];
+  return () => {
+    listeners = listeners.filter((l) => l !== onStoreChange);
+  };
+}
+
+function getSnapshot(): Theme {
   return (localStorage.getItem("theme") as Theme) ?? "dark";
 }
 
-function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle("light", theme === "light");
+function getServerSnapshot(): Theme {
+  return "dark";
+}
+
+function setTheme(theme: Theme) {
   localStorage.setItem("theme", theme);
+  document.documentElement.classList.toggle("light", theme === "light");
+  emitChange();
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = getStoredTheme();
-    if (typeof window !== "undefined") applyTheme(stored);
-    return stored;
-  });
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const toggle = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    applyTheme(next);
-  };
+  // Apply theme to DOM after hydration
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+  }, [theme]);
+
+  const toggle = useCallback(() => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  }, [theme]);
 
   return (
     <button

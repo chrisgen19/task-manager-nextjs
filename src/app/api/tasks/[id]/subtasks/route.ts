@@ -30,34 +30,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const maxSubtask = await db.task.aggregate({
-      where: { parentId },
-      _max: { subtaskNumber: true, sortOrder: true },
-    });
-    const subtaskNumber = (maxSubtask._max.subtaskNumber ?? 0) + 1;
-    const sortOrder = (maxSubtask._max.sortOrder ?? -1) + 1;
+    const subtask = await db.$transaction(async (tx) => {
+      const maxSubtask = await tx.task.aggregate({
+        where: { parentId },
+        _max: { subtaskNumber: true, sortOrder: true },
+      });
+      const subtaskNumber = (maxSubtask._max.subtaskNumber ?? 0) + 1;
+      const sortOrder = (maxSubtask._max.sortOrder ?? -1) + 1;
 
-    const updatedBoard = await db.workboard.update({
-      where: { id: parent.workboardId },
-      data: { taskCounter: { increment: 1 } },
-      select: { taskCounter: true },
-    });
+      const updatedBoard = await tx.workboard.update({
+        where: { id: parent.workboardId },
+        data: { taskCounter: { increment: 1 } },
+        select: { taskCounter: true },
+      });
 
-    const subtask = await db.task.create({
-      data: {
-        taskNumber: updatedBoard.taskCounter,
-        title: parsed.data.title,
-        description: "",
-        jiraUrl: "",
-        priority: parent.priority,
-        status: 1,
-        userId: session.user.id,
-        workboardId: parent.workboardId,
-        parentId,
-        subtaskNumber,
-        sortOrder,
-      },
-      include: taskInclude,
+      return tx.task.create({
+        data: {
+          taskNumber: updatedBoard.taskCounter,
+          title: parsed.data.title,
+          description: "",
+          jiraUrl: "",
+          priority: parent.priority,
+          status: 1,
+          userId: session.user.id,
+          workboardId: parent.workboardId,
+          parentId,
+          subtaskNumber,
+          sortOrder,
+        },
+        include: taskInclude,
+      });
     });
 
     return NextResponse.json(subtask, { status: 201 });

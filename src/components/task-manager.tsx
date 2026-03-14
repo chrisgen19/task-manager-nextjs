@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useSyncExternalStore } from "react";
 import { formatTaskSlug } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
@@ -67,6 +67,27 @@ function makeToastId() {
   return Math.random().toString(36).slice(2);
 }
 
+let subtaskListeners: Array<() => void> = [];
+
+function emitSubtaskChange() {
+  for (const listener of subtaskListeners) listener();
+}
+
+function subscribeSubtasks(onStoreChange: () => void) {
+  subtaskListeners = [...subtaskListeners, onStoreChange];
+  return () => {
+    subtaskListeners = subtaskListeners.filter((l) => l !== onStoreChange);
+  };
+}
+
+function getSubtasksSnapshot(): boolean {
+  return localStorage.getItem("showSubtasks") !== "false";
+}
+
+function getSubtasksServerSnapshot(): boolean {
+  return true;
+}
+
 function normalizeTask(raw: Task & { workboard?: { key: string; name: string }; parent?: { taskNumber: number } | null; _count?: { subtasks: number } }): Task {
   return {
     ...raw,
@@ -94,12 +115,7 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
   const [showSort, setShowSort] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [showSubtasks, setShowSubtasks] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("showSubtasks") !== "false";
-    }
-    return true;
-  });
+  const showSubtasks = useSyncExternalStore(subscribeSubtasks, getSubtasksSnapshot, getSubtasksServerSnapshot);
 
   // Compute subtasksDone for parent tasks
   const tasksWithSubtasksDone = useMemo(() => {
@@ -210,12 +226,10 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
   );
 
   const toggleShowSubtasks = useCallback(() => {
-    setShowSubtasks((prev) => {
-      const next = !prev;
-      localStorage.setItem("showSubtasks", String(next));
-      return next;
-    });
-  }, []);
+    const next = !showSubtasks;
+    localStorage.setItem("showSubtasks", String(next));
+    emitSubtaskChange();
+  }, [showSubtasks]);
 
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: number) => {

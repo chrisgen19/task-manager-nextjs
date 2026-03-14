@@ -184,14 +184,18 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
       }
 
       const raw = await res.json();
-      setTask({
+      setTask((prev) => ({
+        ...prev,
         ...raw,
-        workboardKey: task.workboardKey,
-        workboardName: task.workboardName,
+        workboardKey: prev.workboardKey,
+        workboardName: prev.workboardName,
+        parentId: prev.parentId,
+        parentTaskNumber: raw.parent?.taskNumber ?? prev.parentTaskNumber,
+        subtaskNumber: prev.subtaskNumber,
         dueDate: raw.dueDate ? new Date(raw.dueDate).toISOString() : null,
         createdAt: new Date(raw.createdAt).toISOString(),
         updatedAt: new Date(raw.updatedAt).toISOString(),
-      });
+      }));
     } catch {
       setSaveError("Network error");
     } finally {
