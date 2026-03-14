@@ -7,19 +7,27 @@ import type { Task as PrismaTask, Workboard as PrismaWorkboard } from "@/generat
 export default async function DashboardPage() {
   const session = await auth();
 
-  const [rawTasks, rawWorkboards] = await Promise.all([
+  const [rawTasks, rawWorkboards, user] = await Promise.all([
     db.task.findMany({
       where: { userId: session!.user.id },
       orderBy: { createdAt: "desc" },
-      include: { workboard: { select: { key: true, name: true } } },
+      include: {
+        workboard: { select: { key: true, name: true } },
+        parent: { select: { taskNumber: true } },
+        _count: { select: { subtasks: true } },
+      },
     }),
     db.workboard.findMany({
       where: { userId: session!.user.id },
       orderBy: { createdAt: "asc" },
     }),
+    db.user.findUniqueOrThrow({
+      where: { id: session!.user.id },
+      select: { showSubtasks: true },
+    }),
   ]);
 
-  const tasks: Task[] = rawTasks.map((t: PrismaTask & { workboard: { key: string; name: string } }) => ({
+  const tasks: Task[] = rawTasks.map((t: PrismaTask & { workboard: { key: string; name: string }; parent: { taskNumber: number } | null; _count: { subtasks: number } }) => ({
     id: t.id,
     taskNumber: t.taskNumber,
     workboardId: t.workboardId,
@@ -31,6 +39,12 @@ export default async function DashboardPage() {
     priority: t.priority as Task["priority"],
     status: t.status as Task["status"],
     dueDate: t.dueDate ? t.dueDate.toISOString() : null,
+    parentId: t.parentId,
+    subtaskNumber: t.subtaskNumber,
+    sortOrder: t.sortOrder,
+    parentTaskNumber: t.parent?.taskNumber ?? null,
+    subtaskCount: t._count.subtasks,
+    subtasksDone: 0,
     userId: t.userId,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
@@ -51,6 +65,7 @@ export default async function DashboardPage() {
     <TaskManager
       initialTasks={tasks}
       initialWorkboards={workboards}
+      initialShowSubtasks={user.showSubtasks}
       userName={session!.user.name ?? "User"}
     />
   );

@@ -10,7 +10,7 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true, createdAt: true, updatedAt: true },
+    select: { id: true, name: true, email: true, showSubtasks: true, createdAt: true, updatedAt: true },
   });
 
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -55,7 +55,7 @@ export async function PUT(req: Request) {
     const user = await db.user.update({
       where: { id: session.user.id },
       data: updateData,
-      select: { id: true, name: true, email: true, createdAt: true, updatedAt: true },
+      select: { id: true, name: true, email: true, showSubtasks: true, createdAt: true, updatedAt: true },
     });
 
     return NextResponse.json(user);

@@ -27,6 +27,13 @@ export interface Task {
   priority: Priority;
   status: Status;
   dueDate: string | null;
+  parentId: string | null;
+  subtaskNumber: number | null;
+  sortOrder: number;
+  parentTaskNumber: number | null;
+  subtasks?: Task[];
+  subtaskCount: number;
+  subtasksDone: number;
   userId: string;
   createdAt: string;
   updatedAt: string;

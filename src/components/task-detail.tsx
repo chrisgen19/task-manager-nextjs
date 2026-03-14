@@ -5,14 +5,17 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ChevronRight, ExternalLink, Copy, Check, Trash2, Calendar,
-  ChevronDown, Pencil, X,
+  ChevronDown, Pencil, X, Plus, GripVertical,
+  ArrowUpRight,
 } from "lucide-react";
 import { RichTextEditor } from "./rich-text-editor";
+import { formatTaskKey } from "@/lib/utils";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS } from "@/types";
 import type { Task } from "@/types";
 
 interface TaskDetailProps {
   task: Task;
+  subtasks?: Task[];
 }
 
 function formatDateTime(iso: string) {
@@ -67,10 +70,9 @@ interface SelectDropdownProps {
   value: number;
   onSelect: (value: number) => void;
   onClose: () => void;
-  BadgeComponent: typeof PriorityBadge | typeof StatusBadge;
 }
 
-function SelectDropdown({ options, colors, value, onSelect, onClose, BadgeComponent }: SelectDropdownProps) {
+function SelectDropdown({ options, colors, value, onSelect, onClose }: SelectDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -123,7 +125,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-export function TaskDetail({ task: initialTask }: TaskDetailProps) {
+export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }: TaskDetailProps) {
   const router = useRouter();
   const [task, setTask] = useState(initialTask);
   const [copied, setCopied] = useState(false);
@@ -143,8 +145,16 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
   const [jiraUrlValue, setJiraUrlValue] = useState(task.jiraUrl);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [subtasks, setSubtasks] = useState<Task[]>(initialSubtasks);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [isCreatingSubtask, setIsCreatingSubtask] = useState(false);
+  const [showSubtasks, setShowSubtasks] = useState(true);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
 
-  const taskSlug = `${task.workboardKey}-${task.taskNumber}`;
+  const taskSlug = formatTaskKey(task);
+  const isSubtask = !!task.parentId;
+  const hasSubtasks = subtasks.length > 0;
+  const subtasksDone = subtasks.filter((s) => s.status === 4).length;
 
   const buildPayload = useCallback((updates: Record<string, unknown>) => ({
     title: task.title,
@@ -174,14 +184,18 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
       }
 
       const raw = await res.json();
-      setTask({
+      setTask((prev) => ({
+        ...prev,
         ...raw,
-        workboardKey: task.workboardKey,
-        workboardName: task.workboardName,
+        workboardKey: prev.workboardKey,
+        workboardName: prev.workboardName,
+        parentId: prev.parentId,
+        parentTaskNumber: raw.parent?.taskNumber ?? prev.parentTaskNumber,
+        subtaskNumber: prev.subtaskNumber,
         dueDate: raw.dueDate ? new Date(raw.dueDate).toISOString() : null,
         createdAt: new Date(raw.createdAt).toISOString(),
         updatedAt: new Date(raw.updatedAt).toISOString(),
-      });
+      }));
     } catch {
       setSaveError("Network error");
     } finally {
@@ -211,9 +225,101 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
   }, [jiraUrlValue, task.jiraUrl, saveField]);
 
   const handleDelete = async () => {
-    if (!confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
-    const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/dashboard");
+    const msg = hasSubtasks
+      ? `Delete "${task.title}" and its ${subtasks.length} subtask(s)? This cannot be undone.`
+      : `Delete "${task.title}"? This cannot be undone.`;
+    if (!confirm(msg)) return;
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "Failed to delete task");
+      }
+    } catch {
+      setSaveError("Failed to delete task");
+    }
+  };
+
+  const handleCreateSubtask = async () => {
+    if (!newSubtaskTitle.trim()) return;
+    setIsCreatingSubtask(true);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/subtasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newSubtaskTitle.trim() }),
+      });
+      if (res.ok) {
+        const raw = await res.json();
+        const newSubtask: Task = {
+          ...raw,
+          workboardKey: raw.workboard?.key ?? task.workboardKey,
+          workboardName: raw.workboard?.name ?? task.workboardName,
+          dueDate: raw.dueDate ? new Date(raw.dueDate).toISOString() : null,
+          createdAt: new Date(raw.createdAt).toISOString(),
+          updatedAt: new Date(raw.updatedAt).toISOString(),
+          parentTaskNumber: raw.parent?.taskNumber ?? task.taskNumber,
+          subtaskCount: raw._count?.subtasks ?? 0,
+          subtasksDone: 0,
+        };
+        setSubtasks((prev) => [...prev, newSubtask]);
+        setNewSubtaskTitle("");
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "Failed to create subtask");
+      }
+    } catch {
+      setSaveError("Failed to create subtask");
+    } finally {
+      setIsCreatingSubtask(false);
+    }
+  };
+
+  const handleReorderSubtasks = async (fromIdx: number, toIdx: number) => {
+    const previous = subtasks;
+    const reordered = [...previous];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    setSubtasks(reordered);
+
+    try {
+      setSaveError("");
+      const res = await fetch(`/api/tasks/${task.id}/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subtaskIds: reordered.map((s) => s.id) }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSubtasks(previous);
+        setSaveError(body.error ?? "Failed to reorder subtasks");
+      }
+    } catch {
+      setSubtasks(previous);
+      setSaveError("Failed to reorder subtasks");
+    }
+  };
+
+  const handleConvertToStandalone = async () => {
+    try {
+      setSaveError("");
+      const res = await fetch(`/api/tasks/${task.id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "to-standalone" }),
+      });
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "Failed to convert to standalone task");
+      }
+    } catch {
+      setSaveError("Failed to convert to standalone task");
+    }
   };
 
   const copyLink = () => {
@@ -288,13 +394,27 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
         <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
         <div className="flex flex-col gap-6 w-full py-6 px-8">
 
+          {/* Parent breadcrumb for subtasks */}
+          {isSubtask && task.parentTaskNumber != null && (
+            <div>
+              <Link
+                href={`/t/${task.workboardKey}-${task.parentTaskNumber}`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
+                style={{ background: "var(--bg-tertiary)", color: "var(--status-todo)" }}
+              >
+                <ArrowUpRight size={12} />
+                Subtask of {task.workboardKey}-{task.parentTaskNumber}
+              </Link>
+            </div>
+          )}
+
           {/* Task type badge */}
           <div>
             <span
               className="text-xs font-semibold px-2.5 py-1 rounded uppercase tracking-wider"
               style={{ background: "var(--bg-tertiary)", color: "var(--text-tertiary)" }}
             >
-              Task · {taskSlug}
+              {isSubtask ? "Subtask" : "Task"} · {taskSlug}
             </span>
           </div>
 
@@ -413,6 +533,116 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
             )}
           </div>
 
+          {/* Subtasks section (only for non-subtask tasks) */}
+          {!isSubtask && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  onClick={() => setShowSubtasks((v) => !v)}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronDown
+                    size={14}
+                    className="transition-transform"
+                    style={{
+                      color: "var(--text-tertiary)",
+                      transform: showSubtasks ? "rotate(0deg)" : "rotate(-90deg)",
+                    }}
+                  />
+                  <h3 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Subtasks</h3>
+                </button>
+                {subtasks.length > 0 && (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+                    {subtasksDone}/{subtasks.length}
+                  </span>
+                )}
+                {subtasks.length > 0 && (
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-tertiary)", maxWidth: "120px" }}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${(subtasksDone / subtasks.length) * 100}%`,
+                        background: subtasksDone === subtasks.length ? "var(--status-done)" : "var(--status-todo)",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {showSubtasks && (
+                <div className="space-y-1">
+                  {/* Subtask list */}
+                  {subtasks.map((sub, idx) => (
+                    <div
+                      key={sub.id}
+                      draggable
+                      onDragStart={() => setDragIdx(idx)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragIdx !== null && dragIdx !== idx) {
+                          handleReorderSubtasks(dragIdx, idx);
+                        }
+                        setDragIdx(null);
+                      }}
+                      onDragEnd={() => setDragIdx(null)}
+                      onClick={() => router.push(`/t/${formatTaskKey(sub)}`)}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors"
+                      style={{ background: dragIdx === idx ? "var(--bg-tertiary)" : "transparent" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = dragIdx === idx ? "var(--bg-tertiary)" : "transparent"; }}
+                    >
+                      <GripVertical size={12} className="opacity-0 group-hover:opacity-50 shrink-0 cursor-grab" style={{ color: "var(--text-tertiary)" }} />
+                      <span
+                        className="w-3.5 h-3.5 rounded-sm border-2 shrink-0 flex items-center justify-center"
+                        style={{
+                          borderColor: STATUS_COLORS[sub.status],
+                          background: sub.status === 4 ? STATUS_COLORS[4] : "transparent",
+                        }}
+                      >
+                        {sub.status === 4 && <Check size={10} className="text-white" />}
+                      </span>
+                      <span className="text-xs font-mono shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                        {formatTaskKey(sub)}
+                      </span>
+                      <span
+                        className="text-sm flex-1 truncate"
+                        style={{
+                          color: sub.status === 4 ? "var(--text-tertiary)" : "var(--text-primary)",
+                          textDecoration: sub.status === 4 ? "line-through" : "none",
+                        }}
+                      >
+                        {sub.title}
+                      </span>
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ background: PRIORITY_COLORS[sub.priority] }}
+                        title={PRIORITIES[sub.priority]}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Inline creation */}
+                  <div className="flex items-center gap-2 px-2 py-1">
+                    <Plus size={14} style={{ color: "var(--text-tertiary)" }} />
+                    <input
+                      type="text"
+                      value={newSubtaskTitle}
+                      onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleCreateSubtask();
+                        if (e.key === "Escape") setNewSubtaskTitle("");
+                      }}
+                      placeholder="Add subtask…"
+                      disabled={isCreatingSubtask}
+                      className="flex-1 text-sm bg-transparent outline-none"
+                      style={{ color: "var(--text-primary)" }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Activity placeholder */}
           <div>
             <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>Activity</h3>
@@ -454,9 +684,15 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
                   options={STATUSES}
                   colors={STATUS_COLORS}
                   value={task.status}
-                  onSelect={(v) => saveField({ status: v })}
+                  onSelect={(v) => {
+                    if (v === 4 && subtasks.length > 0) {
+                      const open = subtasks.filter((s) => s.status !== 4);
+                      if (open.length > 0 && !confirm(`This task has ${open.length} open subtask(s). Mark as Done anyway?`)) return;
+                    }
+                    saveField({ status: v });
+                  }}
                   onClose={() => setShowStatusDropdown(false)}
-                  BadgeComponent={StatusBadge}
+
                 />
               )}
             </div>
@@ -483,7 +719,7 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
                       value={task.priority}
                       onSelect={(v) => saveField({ priority: v })}
                       onClose={() => setShowPriorityDropdown(false)}
-                      BadgeComponent={PriorityBadge}
+
                     />
                   )}
                 </div>
@@ -631,8 +867,24 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
             </p>
           </div>
 
-          {/* Delete */}
-          <div className="mt-auto pt-6">
+          {/* Convert / Delete actions */}
+          <div className="mt-auto pt-6 space-y-2">
+            {/* Convert to standalone (only for subtasks) */}
+            {isSubtask && (
+              <button
+                onClick={handleConvertToStandalone}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  color: "var(--status-todo)",
+                  background: "color-mix(in srgb, var(--status-todo) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--status-todo) 20%, transparent)",
+                }}
+              >
+                <ArrowUpRight size={14} />
+                Convert to standalone task
+              </button>
+            )}
+
             <button
               onClick={handleDelete}
               className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -643,7 +895,7 @@ export function TaskDetail({ task: initialTask }: TaskDetailProps) {
               }}
             >
               <Trash2 size={14} />
-              Delete task
+              Delete {isSubtask ? "subtask" : "task"}
             </button>
           </div>
         </div>

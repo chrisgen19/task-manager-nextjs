@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { PRIORITIES, PRIORITY_LABELS } from "@/types";
+import { PRIORITY_LABELS } from "@/types";
 import type { Task } from "@/types";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

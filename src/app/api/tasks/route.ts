@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { allocateSubtaskNumber } from "@/lib/subtask";
 import { taskSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
 
 const taskInclude = {
   workboard: { select: { key: true, name: true } },
+  parent: { select: { taskNumber: true } },
+  _count: { select: { subtasks: true } },
 } as const;
 
 export async function GET() {
@@ -40,7 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { title, description, jiraUrl, priority, status, dueDate, workboardId } = parsed.data;
+    const { title, description, jiraUrl, priority, status, dueDate, workboardId, parentId } = parsed.data;
 
     // Verify the workboard belongs to this user
     const workboard = await db.workboard.findFirst({
@@ -50,7 +53,50 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Workboard not found" }, { status: 404 });
     }
 
-    // Atomically increment taskCounter and get new taskNumber
+    if (parentId) {
+      const parent = await db.task.findFirst({
+        where: { id: parentId, userId: session.user.id },
+      });
+      if (!parent) {
+        return NextResponse.json({ error: "Parent task not found" }, { status: 404 });
+      }
+      if (parent.parentId) {
+        return NextResponse.json({ error: "Cannot nest subtasks more than one level" }, { status: 400 });
+      }
+      if (parent.workboardId !== workboardId) {
+        return NextResponse.json({ error: "Parent must be on the same board" }, { status: 400 });
+      }
+
+      const task = await allocateSubtaskNumber(parentId, async (tx, subtaskNumber, sortOrder) => {
+        const updatedBoard = await tx.workboard.update({
+          where: { id: workboardId },
+          data: { taskCounter: { increment: 1 } },
+          select: { taskCounter: true },
+        });
+
+        return tx.task.create({
+          data: {
+            taskNumber: updatedBoard.taskCounter,
+            title,
+            description: sanitizeHtmlServer(description ?? ""),
+            jiraUrl: jiraUrl ?? "",
+            priority,
+            status,
+            dueDate: dueDate ? new Date(dueDate) : null,
+            userId: session.user.id,
+            workboardId,
+            parentId,
+            subtaskNumber,
+            sortOrder,
+          },
+          include: taskInclude,
+        });
+      });
+
+      return NextResponse.json(task, { status: 201 });
+    }
+
+    // Standalone task — no subtask allocation needed
     const updatedBoard = await db.workboard.update({
       where: { id: workboardId },
       data: { taskCounter: { increment: 1 } },
@@ -73,7 +119,14 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(task, { status: 201 });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "Parent task not found") {
+      return NextResponse.json({ error: message }, { status: 404 });
+    }
+    if (message === "Cannot add subtasks to a subtask") {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

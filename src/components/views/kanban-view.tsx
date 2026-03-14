@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus } from "lucide-react";
-import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/types";
+import { Plus, CornerDownRight } from "lucide-react";
+import { formatTaskKey } from "@/lib/utils";
+import { STATUSES, STATUS_COLORS } from "@/types";
 import type { Task } from "@/types";
 
 interface KanbanViewProps {
@@ -36,13 +37,23 @@ function KanbanCard({ task, onNavigate, onDragStart }: { task: Task; onNavigate:
     >
       {/* Priority accent */}
       <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg" style={{ background: PRIORITY_COLORS[task.priority] }} />
-      <p className="text-xs font-mono mb-0.5 pl-2" style={{ color: "var(--text-tertiary)" }}>{task.workboardKey}-{task.taskNumber}</p>
+      <p className="text-xs font-mono mb-0.5 pl-2 flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+        {task.parentId && <CornerDownRight size={10} />}
+        {formatTaskKey(task)}
+      </p>
       <p className="text-sm font-medium mb-1.5 pl-2" style={{ color: "var(--text-primary)", lineHeight: 1.4 }}>{task.title}</p>
-      {task.dueDate && (
-        <p className="text-xs pl-2" style={{ color: "var(--text-tertiary)" }}>
-          Due {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </p>
-      )}
+      <div className="flex items-center gap-2 pl-2">
+        {task.subtaskCount > 0 && (
+          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+            {task.subtasksDone}/{task.subtaskCount}
+          </span>
+        )}
+        {task.dueDate && (
+          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+            Due {new Date(task.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -66,7 +77,8 @@ export function KanbanView({ tasks, onNavigate, onNewTask, onStatusChange }: Kan
   };
 
   return (
-    <div className="flex gap-4 h-full overflow-x-auto p-5 pb-4">
+    <div className="flex flex-col h-full">
+    <div className="flex gap-4 flex-1 overflow-x-auto px-5 py-4">
       {STATUSES.map((statusName, statusIdx) => {
         const colTasks = tasks.filter((t) => t.status === statusIdx);
         const isDragOver = dragOver === statusIdx;
@@ -119,6 +131,7 @@ export function KanbanView({ tasks, onNavigate, onNewTask, onStatusChange }: Kan
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

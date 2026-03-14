@@ -1,7 +1,7 @@
 "use client";
 
-import { ExternalLink, Calendar, Pencil } from "lucide-react";
-import { formatDate, isOverdue, stripHtml } from "@/lib/utils";
+import { ExternalLink, Calendar, Pencil, CornerDownRight } from "lucide-react";
+import { formatDate, isOverdue, stripHtml, formatTaskKey } from "@/lib/utils";
 import { PRIORITIES, STATUSES, PRIORITY_LABELS, STATUS_LABELS, PRIORITY_COLORS } from "@/types";
 import type { Task } from "@/types";
 
@@ -36,6 +36,12 @@ export function TaskCard({ task, onEdit, draggable, onDragStart }: TaskCardProps
       />
 
       <div className="relative">
+        {/* Task key */}
+        <p className="text-xs font-mono mb-1 flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
+          {task.parentId && <CornerDownRight size={10} />}
+          {formatTaskKey(task)}
+        </p>
+
         {/* Header row */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="text-sm font-medium leading-snug flex-1" style={{ color: "var(--text-primary)" }}>
@@ -66,6 +72,15 @@ export function TaskCard({ task, onEdit, draggable, onDragStart }: TaskCardProps
             {STATUSES[task.status]}
           </span>
         </div>
+
+        {/* Subtask progress */}
+        {task.subtaskCount > 0 && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+              {task.subtasksDone}/{task.subtaskCount} subtasks
+            </span>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2">

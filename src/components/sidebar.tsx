@@ -76,8 +76,6 @@ export function Sidebar({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const total = tasks.length;
-  const done = tasks.filter((t) => t.status === STATUS_DONE).length;
-  const active = tasks.filter((t) => t.status === STATUS_IN_PROGRESS).length;
   const overdue = tasks.filter(
     (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== STATUS_DONE
   ).length;
@@ -157,9 +155,16 @@ export function Sidebar({
 
   const handleDelete = async (w: Workboard) => {
     if (!confirm(`Delete board "${w.name}" and all its tasks?`)) return;
-    const res = await fetch(`/api/workboards/${w.id}`, { method: "DELETE" });
-    if (res.ok) {
-      onWorkboardDelete(w.id);
+    try {
+      const res = await fetch(`/api/workboards/${w.id}`, { method: "DELETE" });
+      if (res.ok) {
+        onWorkboardDelete(w.id);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setFormError(body.error ?? "Failed to delete board");
+      }
+    } catch {
+      setFormError("Failed to delete board");
     }
   };
 

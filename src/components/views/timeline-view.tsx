@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PRIORITY_LABELS, PRIORITY_COLORS } from "@/types";
+import { PRIORITY_COLORS } from "@/types";
 import type { Task } from "@/types";
 
 type Zoom = "day" | "week" | "month";

@@ -2,7 +2,6 @@
 
 import { Search, Plus, LayoutList, Columns3, Calendar, GitBranch, SlidersHorizontal, X } from "lucide-react";
 import type { ViewType, TaskFilters, TaskSort, SortField } from "@/types";
-import { PRIORITIES, STATUSES } from "@/types";
 
 const VIEW_TABS: { view: ViewType; label: string; icon: React.ReactNode }[] = [
   { view: "list",     label: "List",     icon: <LayoutList size={15} /> },
@@ -21,6 +20,8 @@ interface HeaderProps {
   onNewTask: () => void;
   showSort: boolean;
   onToggleSort: () => void;
+  showSubtasks: boolean;
+  onToggleSubtasks: () => void;
 }
 
 export function Header({
@@ -33,6 +34,8 @@ export function Header({
   onNewTask,
   showSort,
   onToggleSort,
+  showSubtasks,
+  onToggleSubtasks,
 }: HeaderProps) {
   const selectStyle = {
     background: "var(--bg-tertiary)",
@@ -100,8 +103,21 @@ export function Header({
           })}
         </nav>
 
-        {/* Right: Sort + New Task */}
-        <div className="flex items-center gap-2">
+        {/* Right: Subtasks toggle + Sort + New Task */}
+        <div className="flex items-center gap-2" suppressHydrationWarning>
+          <button
+            onClick={onToggleSubtasks}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            suppressHydrationWarning
+            style={{
+              background: showSubtasks ? "color-mix(in srgb, var(--status-todo) 15%, transparent)" : "var(--bg-tertiary)",
+              color: showSubtasks ? "var(--status-todo)" : "var(--text-secondary)",
+              border: `1px solid ${showSubtasks ? "color-mix(in srgb, var(--status-todo) 30%, transparent)" : "var(--border-primary)"}`,
+            }}
+          >
+            Subtasks
+          </button>
+
           <button
             onClick={onToggleSort}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
