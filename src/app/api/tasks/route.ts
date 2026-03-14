@@ -63,6 +63,9 @@ export async function POST(req: Request) {
       if (parent.parentId) {
         return NextResponse.json({ error: "Cannot nest subtasks more than one level" }, { status: 400 });
       }
+      if (parent.workboardId !== workboardId) {
+        return NextResponse.json({ error: "Parent must be on the same board" }, { status: 400 });
+      }
 
       const task = await allocateSubtaskNumber(parentId, async (tx, subtaskNumber, sortOrder) => {
         const updatedBoard = await tx.workboard.update({

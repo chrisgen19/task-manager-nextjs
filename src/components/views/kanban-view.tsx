@@ -11,8 +11,6 @@ interface KanbanViewProps {
   onNavigate: (task: Task) => void;
   onNewTask: (status: number) => void;
   onStatusChange: (taskId: string, newStatus: number) => void;
-  showSubtasks: boolean;
-  onToggleSubtasks: () => void;
 }
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -60,7 +58,7 @@ function KanbanCard({ task, onNavigate, onDragStart }: { task: Task; onNavigate:
   );
 }
 
-export function KanbanView({ tasks, onNavigate, onNewTask, onStatusChange, showSubtasks, onToggleSubtasks }: KanbanViewProps) {
+export function KanbanView({ tasks, onNavigate, onNewTask, onStatusChange }: KanbanViewProps) {
   const draggedId = useRef<string | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
@@ -80,18 +78,7 @@ export function KanbanView({ tasks, onNavigate, onNewTask, onStatusChange, showS
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-end px-5 pt-3 pb-1">
-        <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: "var(--text-secondary)" }}>
-          <input
-            type="checkbox"
-            checked={showSubtasks}
-            onChange={onToggleSubtasks}
-            className="rounded"
-          />
-          Show subtasks
-        </label>
-      </div>
-    <div className="flex gap-4 flex-1 overflow-x-auto px-5 pb-4">
+    <div className="flex gap-4 flex-1 overflow-x-auto px-5 py-4">
       {STATUSES.map((statusName, statusIdx) => {
         const colTasks = tasks.filter((t) => t.status === statusIdx);
         const isDragOver = dragOver === statusIdx;

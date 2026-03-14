@@ -20,6 +20,8 @@ interface HeaderProps {
   onNewTask: () => void;
   showSort: boolean;
   onToggleSort: () => void;
+  showSubtasks: boolean;
+  onToggleSubtasks: () => void;
 }
 
 export function Header({
@@ -32,6 +34,8 @@ export function Header({
   onNewTask,
   showSort,
   onToggleSort,
+  showSubtasks,
+  onToggleSubtasks,
 }: HeaderProps) {
   const selectStyle = {
     background: "var(--bg-tertiary)",
@@ -99,8 +103,18 @@ export function Header({
           })}
         </nav>
 
-        {/* Right: Sort + New Task */}
+        {/* Right: Subtasks toggle + Sort + New Task */}
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs cursor-pointer select-none" style={{ color: "var(--text-secondary)" }}>
+            <input
+              type="checkbox"
+              checked={showSubtasks}
+              onChange={onToggleSubtasks}
+              className="rounded"
+            />
+            Subtasks
+          </label>
+
           <button
             onClick={onToggleSort}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"

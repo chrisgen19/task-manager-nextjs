@@ -302,7 +302,7 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
   return (
     <>
       <Sidebar
-        tasks={tasks}
+        tasks={visibleTasks}
         workboards={workboards}
         filters={filters}
         onFiltersChange={setFilters}
@@ -323,6 +323,8 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
           onNewTask={() => openNewTask()}
           showSort={showSort}
           onToggleSort={() => setShowSort((v) => !v)}
+          showSubtasks={showSubtasks}
+          onToggleSubtasks={toggleShowSubtasks}
         />
 
         <main className="flex-1 overflow-hidden">
@@ -340,8 +342,6 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
               onNavigate={navigateToTask}
               onNewTask={(status) => openNewTask({ status })}
               onStatusChange={handleStatusChange}
-              showSubtasks={showSubtasks}
-              onToggleSubtasks={toggleShowSubtasks}
             />
           )}
           {view === "calendar" && (
