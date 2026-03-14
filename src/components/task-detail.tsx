@@ -266,16 +266,29 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
   };
 
   const handleReorderSubtasks = async (fromIdx: number, toIdx: number) => {
-    const reordered = [...subtasks];
+    const previous = subtasks;
+    const reordered = [...previous];
     const [moved] = reordered.splice(fromIdx, 1);
     reordered.splice(toIdx, 0, moved);
     setSubtasks(reordered);
 
-    await fetch(`/api/tasks/${task.id}/reorder`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subtaskIds: reordered.map((s) => s.id) }),
-    });
+    try {
+      setSaveError("");
+      const res = await fetch(`/api/tasks/${task.id}/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subtaskIds: reordered.map((s) => s.id) }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSubtasks(previous);
+        setSaveError(body.error ?? "Failed to reorder subtasks");
+      }
+    } catch {
+      setSubtasks(previous);
+      setSaveError("Failed to reorder subtasks");
+    }
   };
 
   const handleConvertToStandalone = async () => {

@@ -47,9 +47,9 @@ export default async function TaskDetailPage({ params }: Props) {
     },
   };
 
-  // Fetch the primary task (always from workboard+taskNumber first)
-  let rawTask = await db.task.findUnique({
-    where: { workboardId_taskNumber: { workboardId: workboard.id, taskNumber } },
+  // Plain slugs resolve standalone tasks only.
+  let rawTask = await db.task.findFirst({
+    where: { workboardId: workboard.id, taskNumber, parentId: null },
     include: taskInclude,
   });
 
@@ -137,7 +137,7 @@ export default async function TaskDetailPage({ params }: Props) {
         activeWorkboardId={task.workboardId}
         userName={session!.user.name ?? "User"}
       />
-      <TaskDetail task={task} subtasks={subtasks} />
+      <TaskDetail key={slug} task={task} subtasks={subtasks} />
     </>
   );
 }

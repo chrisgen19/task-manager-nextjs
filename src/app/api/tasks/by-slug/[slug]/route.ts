@@ -28,8 +28,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   if (subtaskNumStr) {
     // Find parent first, then subtask
-    const parent = await db.task.findUnique({
-      where: { workboardId_taskNumber: { workboardId: workboard.id, taskNumber } },
+    const parent = await db.task.findFirst({
+      where: { workboardId: workboard.id, taskNumber, parentId: null },
     });
     if (!parent) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -42,8 +42,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json(subtask);
   }
 
-  const task = await db.task.findUnique({
-    where: { workboardId_taskNumber: { workboardId: workboard.id, taskNumber } },
+  const task = await db.task.findFirst({
+    where: { workboardId: workboard.id, taskNumber, parentId: null },
     include: taskInclude,
   });
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
