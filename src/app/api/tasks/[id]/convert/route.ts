@@ -49,12 +49,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       const updated = await allocateSubtaskNumber(parent.id, async (tx, subtaskNumber, sortOrder) => {
-        // Re-check subtask count inside the transaction to prevent race conditions
-        const freshTask = await tx.task.findUniqueOrThrow({
-          where: { id },
-          include: { _count: { select: { subtasks: true } } },
-        });
-        if (freshTask._count.subtasks > 0) {
+        // Lock the task being converted to prevent concurrent subtask additions
+        await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`;
+
+        const childCount = await tx.task.count({ where: { parentId: id } });
+        if (childCount > 0) {
           throw new Error("Cannot convert a task with subtasks");
         }
 
