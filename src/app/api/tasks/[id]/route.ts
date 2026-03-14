@@ -6,6 +6,8 @@ import { sanitizeHtmlServer } from "@/lib/sanitize";
 
 const taskInclude = {
   workboard: { select: { key: true, name: true } },
+  parent: { select: { taskNumber: true } },
+  _count: { select: { subtasks: true } },
 } as const;
 
 async function getTaskOrFail(id: string, userId: string) {

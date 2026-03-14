@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronUp, ChevronDown, ExternalLink, Calendar, ClipboardList } from "lucide-react";
-import { formatDate, isOverdue } from "@/lib/utils";
+import { ChevronUp, ChevronDown, ExternalLink, Calendar, ClipboardList, CornerDownRight } from "lucide-react";
+import { formatDate, isOverdue, formatTaskKey } from "@/lib/utils";
 import { PRIORITIES, STATUSES, PRIORITY_LABELS, STATUS_LABELS, type SortField } from "@/types";
 import type { Task, TaskSort } from "@/types";
 
@@ -96,8 +96,9 @@ export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProp
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
               >
                 <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "0.75rem" }}>
-                  <span style={{ color: "var(--text-tertiary)", fontWeight: 600 }}>
-                    {task.workboardKey}-{task.taskNumber}
+                  <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)", fontWeight: 600 }}>
+                    {task.parentId && <CornerDownRight size={10} />}
+                    {formatTaskKey(task)}
                   </span>
                 </td>
                 <td style={tdStyle}>
@@ -105,8 +106,15 @@ export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProp
                     {PRIORITIES[task.priority]}
                   </span>
                 </td>
-                <td style={tdStyle}>
-                  <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{task.title}</span>
+                <td style={{ ...tdStyle, paddingLeft: task.parentId ? "24px" : "12px" }}>
+                  <span className="flex items-center gap-2" style={{ color: "var(--text-primary)", fontWeight: 500 }}>
+                    {task.title}
+                    {task.subtaskCount > 0 && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+                        {task.subtasksDone}/{task.subtaskCount}
+                      </span>
+                    )}
+                  </span>
                 </td>
                 <td style={tdStyle}>
                   <span className={`${STATUS_LABELS[task.status]} px-2 py-0.5 rounded text-xs font-medium`}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { formatTaskSlug } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
@@ -66,7 +67,7 @@ function makeToastId() {
   return Math.random().toString(36).slice(2);
 }
 
-function normalizeTask(raw: Task & { workboard?: { key: string; name: string } }): Task {
+function normalizeTask(raw: Task & { workboard?: { key: string; name: string }; parent?: { taskNumber: number } | null; _count?: { subtasks: number } }): Task {
   return {
     ...raw,
     workboardKey: raw.workboard?.key ?? raw.workboardKey ?? "",
@@ -74,6 +75,12 @@ function normalizeTask(raw: Task & { workboard?: { key: string; name: string } }
     dueDate: raw.dueDate ? new Date(raw.dueDate).toISOString() : null,
     createdAt: new Date(raw.createdAt).toISOString(),
     updatedAt: new Date(raw.updatedAt).toISOString(),
+    parentId: raw.parentId ?? null,
+    subtaskNumber: raw.subtaskNumber ?? null,
+    sortOrder: raw.sortOrder ?? 0,
+    parentTaskNumber: raw.parent?.taskNumber ?? raw.parentTaskNumber ?? null,
+    subtaskCount: raw._count?.subtasks ?? raw.subtaskCount ?? 0,
+    subtasksDone: raw.subtasksDone ?? 0,
   };
 }
 
@@ -87,10 +94,34 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
   const [showSort, setShowSort] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [showSubtasks, setShowSubtasks] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("showSubtasks") !== "false";
+    }
+    return true;
+  });
+
+  // Compute subtasksDone for parent tasks
+  const tasksWithSubtasksDone = useMemo(() => {
+    const doneByParent = new Map<string, number>();
+    for (const t of tasks) {
+      if (t.parentId && t.status === 4) {
+        doneByParent.set(t.parentId, (doneByParent.get(t.parentId) ?? 0) + 1);
+      }
+    }
+    return tasks.map((t) =>
+      t.subtaskCount > 0 ? { ...t, subtasksDone: doneByParent.get(t.id) ?? 0 } : t
+    );
+  }, [tasks]);
+
+  const visibleTasks = useMemo(() => {
+    if (showSubtasks) return tasksWithSubtasksDone;
+    return tasksWithSubtasksDone.filter((t) => !t.parentId);
+  }, [tasksWithSubtasksDone, showSubtasks]);
 
   const filteredTasks = useMemo(
-    () => applyFiltersAndSort(tasks, filters, sort),
-    [tasks, filters, sort]
+    () => applyFiltersAndSort(visibleTasks, filters, sort),
+    [visibleTasks, filters, sort]
   );
 
   const addToast = useCallback((message: string, type: Toast["type"]) => {
@@ -133,7 +164,7 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
   );
 
   const navigateToTask = useCallback((task: Task) => {
-    router.push(`/t/${task.workboardKey}-${task.taskNumber}`);
+    router.push(`/t/${formatTaskSlug(task)}`);
   }, [router]);
 
   const closeModal = useCallback(() => {
@@ -170,7 +201,7 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
         closeModal();
 
         // Navigate to the new task page
-        router.push(`/t/${normalized.workboardKey}-${normalized.taskNumber}`);
+        router.push(`/t/${formatTaskSlug(normalized)}`);
       } catch {
         addToast("Network error. Please check your connection.", "error");
       }
@@ -178,10 +209,28 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
     [closeModal, addToast, router]
   );
 
+  const toggleShowSubtasks = useCallback(() => {
+    setShowSubtasks((prev) => {
+      const next = !prev;
+      localStorage.setItem("showSubtasks", String(next));
+      return next;
+    });
+  }, []);
+
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: number) => {
       const task = tasks.find((t) => t.id === taskId);
       if (!task) return;
+
+      // Warn when moving parent task to Done with open subtasks
+      if (newStatus === 4 && task.subtaskCount > 0) {
+        const openSubtasks = tasks.filter((t) => t.parentId === taskId && t.status !== 4);
+        if (openSubtasks.length > 0) {
+          if (!confirm(`This task has ${openSubtasks.length} open subtask(s). Mark as Done anyway?`)) {
+            return;
+          }
+        }
+      }
 
       const prevStatus = task.status;
 
@@ -277,6 +326,8 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
               onNavigate={navigateToTask}
               onNewTask={(status) => openNewTask({ status })}
               onStatusChange={handleStatusChange}
+              showSubtasks={showSubtasks}
+              onToggleSubtasks={toggleShowSubtasks}
             />
           )}
           {view === "calendar" && (

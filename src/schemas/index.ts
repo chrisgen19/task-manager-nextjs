@@ -29,6 +29,20 @@ export const taskSchema = z.object({
   status: z.number().int().min(0).max(4).default(1),
   dueDate: z.string().nullable().optional(),
   workboardId: z.string().min(1, "Workboard is required"),
+  parentId: z.string().nullable().optional(),
+});
+
+export const subtaskSchema = z.object({
+  title: z.string().min(1, "Title is required").max(255),
+});
+
+export const convertTaskSchema = z.object({
+  type: z.enum(["to-subtask", "to-standalone"]),
+  parentId: z.string().optional(),
+});
+
+export const reorderSubtasksSchema = z.object({
+  subtaskIds: z.array(z.string()).min(1),
 });
 
 export const updateUserSchema = z.object({
@@ -42,4 +56,7 @@ export type RegisterInput = z.input<typeof registerSchema>;
 export type LoginInput = z.input<typeof loginSchema>;
 export type WorkboardInput = z.output<typeof workboardSchema>;
 export type TaskInput = z.output<typeof taskSchema>;
+export type SubtaskInput = z.output<typeof subtaskSchema>;
+export type ConvertTaskInput = z.output<typeof convertTaskSchema>;
+export type ReorderSubtasksInput = z.output<typeof reorderSubtasksSchema>;
 export type UpdateUserInput = z.input<typeof updateUserSchema>;

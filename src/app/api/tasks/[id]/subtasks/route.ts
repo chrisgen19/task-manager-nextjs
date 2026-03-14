@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { subtaskSchema } from "@/schemas";
+
+const taskInclude = {
+  workboard: { select: { key: true, name: true } },
+  parent: { select: { taskNumber: true } },
+  _count: { select: { subtasks: true } },
+} as const;
+
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id: parentId } = await params;
+
+  const parent = await db.task.findFirst({
+    where: { id: parentId, userId: session.user.id },
+  });
+  if (!parent) return NextResponse.json({ error: "Parent task not found" }, { status: 404 });
+  if (parent.parentId) {
+    return NextResponse.json({ error: "Cannot nest subtasks more than one level" }, { status: 400 });
+  }
+
+  try {
+    const body = await req.json();
+    const parsed = subtaskSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    }
+
+    const maxSubtask = await db.task.aggregate({
+      where: { parentId },
+      _max: { subtaskNumber: true, sortOrder: true },
+    });
+    const subtaskNumber = (maxSubtask._max.subtaskNumber ?? 0) + 1;
+    const sortOrder = (maxSubtask._max.sortOrder ?? -1) + 1;
+
+    const updatedBoard = await db.workboard.update({
+      where: { id: parent.workboardId },
+      data: { taskCounter: { increment: 1 } },
+      select: { taskCounter: true },
+    });
+
+    const subtask = await db.task.create({
+      data: {
+        taskNumber: updatedBoard.taskCounter,
+        title: parsed.data.title,
+        description: "",
+        jiraUrl: "",
+        priority: parent.priority,
+        status: 1,
+        userId: session.user.id,
+        workboardId: parent.workboardId,
+        parentId,
+        subtaskNumber,
+        sortOrder,
+      },
+      include: taskInclude,
+    });
+
+    return NextResponse.json(subtask, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

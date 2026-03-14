@@ -1,8 +1,21 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { Task } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function formatTaskKey(task: Pick<Task, "workboardKey" | "taskNumber" | "parentId" | "subtaskNumber" | "parentTaskNumber">): string {
+  if (task.parentId && task.subtaskNumber != null) {
+    const parentNum = task.parentTaskNumber ?? task.taskNumber;
+    return `${task.workboardKey}-${parentNum}.${task.subtaskNumber}`;
+  }
+  return `${task.workboardKey}-${task.taskNumber}`;
+}
+
+export function formatTaskSlug(task: Pick<Task, "workboardKey" | "taskNumber" | "parentId" | "subtaskNumber" | "parentTaskNumber">): string {
+  return formatTaskKey(task);
 }
 
 export function formatDate(dateStr: string | null | undefined): string {
