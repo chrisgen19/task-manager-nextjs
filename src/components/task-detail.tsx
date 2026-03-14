@@ -257,6 +257,9 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
         };
         setSubtasks((prev) => [...prev, newSubtask]);
         setNewSubtaskTitle("");
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "Failed to create subtask");
       }
     } catch {
       setSaveError("Failed to create subtask");
@@ -292,12 +295,22 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
   };
 
   const handleConvertToStandalone = async () => {
-    const res = await fetch(`/api/tasks/${task.id}/convert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "to-standalone" }),
-    });
-    if (res.ok) router.push("/dashboard");
+    try {
+      setSaveError("");
+      const res = await fetch(`/api/tasks/${task.id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "to-standalone" }),
+      });
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "Failed to convert to standalone task");
+      }
+    } catch {
+      setSaveError("Failed to convert to standalone task");
+    }
   };
 
   const copyLink = () => {
