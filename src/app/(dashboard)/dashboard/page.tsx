@@ -7,7 +7,7 @@ import type { Task as PrismaTask, Workboard as PrismaWorkboard } from "@/generat
 export default async function DashboardPage() {
   const session = await auth();
 
-  const [rawTasks, rawWorkboards] = await Promise.all([
+  const [rawTasks, rawWorkboards, user] = await Promise.all([
     db.task.findMany({
       where: { userId: session!.user.id },
       orderBy: { createdAt: "desc" },
@@ -20,6 +20,10 @@ export default async function DashboardPage() {
     db.workboard.findMany({
       where: { userId: session!.user.id },
       orderBy: { createdAt: "asc" },
+    }),
+    db.user.findUniqueOrThrow({
+      where: { id: session!.user.id },
+      select: { showSubtasks: true },
     }),
   ]);
 
@@ -61,6 +65,7 @@ export default async function DashboardPage() {
     <TaskManager
       initialTasks={tasks}
       initialWorkboards={workboards}
+      initialShowSubtasks={user.showSubtasks}
       userName={session!.user.name ?? "User"}
     />
   );

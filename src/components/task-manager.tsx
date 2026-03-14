@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useSyncExternalStore } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { formatTaskSlug } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
@@ -17,6 +17,7 @@ import type { TaskInput } from "@/schemas";
 interface TaskManagerProps {
   initialTasks: Task[];
   initialWorkboards: Workboard[];
+  initialShowSubtasks: boolean;
   userName: string;
 }
 
@@ -67,26 +68,6 @@ function makeToastId() {
   return Math.random().toString(36).slice(2);
 }
 
-let subtaskListeners: Array<() => void> = [];
-
-function emitSubtaskChange() {
-  for (const listener of subtaskListeners) listener();
-}
-
-function subscribeSubtasks(onStoreChange: () => void) {
-  subtaskListeners = [...subtaskListeners, onStoreChange];
-  return () => {
-    subtaskListeners = subtaskListeners.filter((l) => l !== onStoreChange);
-  };
-}
-
-function getSubtasksSnapshot(): boolean {
-  return localStorage.getItem("showSubtasks") !== "false";
-}
-
-function getSubtasksServerSnapshot(): boolean {
-  return true;
-}
 
 function normalizeTask(raw: Task & { workboard?: { key: string; name: string }; parent?: { taskNumber: number } | null; _count?: { subtasks: number } }): Task {
   return {
@@ -105,7 +86,7 @@ function normalizeTask(raw: Task & { workboard?: { key: string; name: string }; 
   };
 }
 
-export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskManagerProps) {
+export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtasks, userName }: TaskManagerProps) {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [workboards, setWorkboards] = useState<Workboard[]>(initialWorkboards);
@@ -115,7 +96,7 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
   const [showSort, setShowSort] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const showSubtasks = useSyncExternalStore(subscribeSubtasks, getSubtasksSnapshot, getSubtasksServerSnapshot);
+  const [showSubtasks, setShowSubtasks] = useState(initialShowSubtasks);
 
   // Compute subtasksDone for parent tasks
   const tasksWithSubtasksDone = useMemo(() => {
@@ -227,8 +208,12 @@ export function TaskManager({ initialTasks, initialWorkboards, userName }: TaskM
 
   const toggleShowSubtasks = useCallback(() => {
     const next = !showSubtasks;
-    localStorage.setItem("showSubtasks", String(next));
-    emitSubtaskChange();
+    setShowSubtasks(next);
+    fetch("/api/users/me/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ showSubtasks: next }),
+    });
   }, [showSubtasks]);
 
   const handleStatusChange = useCallback(

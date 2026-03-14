@@ -45,6 +45,10 @@ export const reorderSubtasksSchema = z.object({
   subtaskIds: z.array(z.string()).min(1),
 });
 
+export const userPreferencesSchema = z.object({
+  showSubtasks: z.boolean().optional(),
+});
+
 export const updateUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100).optional(),
   email: z.string().email("Invalid email address").optional(),
@@ -59,4 +63,5 @@ export type TaskInput = z.output<typeof taskSchema>;
 export type SubtaskInput = z.output<typeof subtaskSchema>;
 export type ConvertTaskInput = z.output<typeof convertTaskSchema>;
 export type ReorderSubtasksInput = z.output<typeof reorderSubtasksSchema>;
+export type UserPreferencesInput = z.output<typeof userPreferencesSchema>;
 export type UpdateUserInput = z.input<typeof updateUserSchema>;
