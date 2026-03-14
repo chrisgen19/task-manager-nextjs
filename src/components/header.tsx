@@ -104,10 +104,11 @@ export function Header({
         </nav>
 
         {/* Right: Subtasks toggle + Sort + New Task */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" suppressHydrationWarning>
           <button
             onClick={onToggleSubtasks}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            suppressHydrationWarning
             style={{
               background: showSubtasks ? "color-mix(in srgb, var(--status-todo) 15%, transparent)" : "var(--bg-tertiary)",
               color: showSubtasks ? "var(--status-todo)" : "var(--text-secondary)",
