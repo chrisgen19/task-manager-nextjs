@@ -119,7 +119,11 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(task, { status: 201 });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "Cannot add subtasks to a subtask") {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

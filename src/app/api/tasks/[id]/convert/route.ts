@@ -36,9 +36,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (parsed.data.parentId === id) {
         return NextResponse.json({ error: "A task cannot be its own parent" }, { status: 400 });
       }
-      if (task._count.subtasks > 0) {
-        return NextResponse.json({ error: "Cannot convert a task with subtasks" }, { status: 400 });
-      }
 
       const parent = await db.task.findFirst({
         where: { id: parsed.data.parentId, userId: session.user.id },
@@ -52,6 +49,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       const updated = await allocateSubtaskNumber(parent.id, async (tx, subtaskNumber, sortOrder) => {
+        // Re-check subtask count inside the transaction to prevent race conditions
+        const freshTask = await tx.task.findUniqueOrThrow({
+          where: { id },
+          include: { _count: { select: { subtasks: true } } },
+        });
+        if (freshTask._count.subtasks > 0) {
+          throw new Error("Cannot convert a task with subtasks");
+        }
+
         return tx.task.update({
           where: { id },
           data: { parentId: parent.id, subtaskNumber, sortOrder },
@@ -80,7 +86,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "Cannot convert a task with subtasks" || message === "Cannot add subtasks to a subtask") {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

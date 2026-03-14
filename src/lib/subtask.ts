@@ -15,7 +15,11 @@ export async function allocateSubtaskNumber<T>(
     try {
       return await db.$transaction(async (tx) => {
         // Lock the parent row to serialize concurrent subtask allocations
-        await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${parentId} FOR UPDATE`;
+        const [lockedParent] = await tx.$queryRaw<Array<{ id: string; parentId: string | null }>>`
+          SELECT id, "parentId" FROM "Task" WHERE id = ${parentId} FOR UPDATE
+        `;
+        if (!lockedParent) throw new Error("Parent task not found");
+        if (lockedParent.parentId) throw new Error("Cannot add subtasks to a subtask");
 
         const maxSubtask = await tx.task.aggregate({
           where: { parentId },
