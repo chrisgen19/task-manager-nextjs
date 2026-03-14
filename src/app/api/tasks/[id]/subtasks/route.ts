@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { allocateSubtaskNumber } from "@/lib/subtask";
 import { subtaskSchema } from "@/schemas";
 
 const taskInclude = {
@@ -30,14 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const subtask = await db.$transaction(async (tx) => {
-      const maxSubtask = await tx.task.aggregate({
-        where: { parentId },
-        _max: { subtaskNumber: true, sortOrder: true },
-      });
-      const subtaskNumber = (maxSubtask._max.subtaskNumber ?? 0) + 1;
-      const sortOrder = (maxSubtask._max.sortOrder ?? -1) + 1;
-
+    const subtask = await allocateSubtaskNumber(parentId, async (tx, subtaskNumber, sortOrder) => {
       const updatedBoard = await tx.workboard.update({
         where: { id: parent.workboardId },
         data: { taskCounter: { increment: 1 } },

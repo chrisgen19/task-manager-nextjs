@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { allocateSubtaskNumber } from "@/lib/subtask";
 import { convertTaskSchema } from "@/schemas";
 
 const taskInclude = {
@@ -32,6 +33,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (!parsed.data.parentId) {
         return NextResponse.json({ error: "parentId is required" }, { status: 400 });
       }
+      if (parsed.data.parentId === id) {
+        return NextResponse.json({ error: "A task cannot be its own parent" }, { status: 400 });
+      }
       if (task._count.subtasks > 0) {
         return NextResponse.json({ error: "Cannot convert a task with subtasks" }, { status: 400 });
       }
@@ -43,20 +47,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (parent.parentId) {
         return NextResponse.json({ error: "Cannot nest subtasks more than one level" }, { status: 400 });
       }
+      if (parent.workboardId !== task.workboardId) {
+        return NextResponse.json({ error: "Parent must be on the same board" }, { status: 400 });
+      }
 
-      const maxSubtask = await db.task.aggregate({
-        where: { parentId: parent.id },
-        _max: { subtaskNumber: true, sortOrder: true },
-      });
-
-      const updated = await db.task.update({
-        where: { id },
-        data: {
-          parentId: parent.id,
-          subtaskNumber: (maxSubtask._max.subtaskNumber ?? 0) + 1,
-          sortOrder: (maxSubtask._max.sortOrder ?? -1) + 1,
-        },
-        include: taskInclude,
+      const updated = await allocateSubtaskNumber(parent.id, async (tx, subtaskNumber, sortOrder) => {
+        return tx.task.update({
+          where: { id },
+          data: { parentId: parent.id, subtaskNumber, sortOrder },
+          include: taskInclude,
+        });
       });
 
       return NextResponse.json(updated);
