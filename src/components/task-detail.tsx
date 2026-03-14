@@ -70,10 +70,9 @@ interface SelectDropdownProps {
   value: number;
   onSelect: (value: number) => void;
   onClose: () => void;
-  BadgeComponent: typeof PriorityBadge | typeof StatusBadge;
 }
 
-function SelectDropdown({ options, colors, value, onSelect, onClose, BadgeComponent }: SelectDropdownProps) {
+function SelectDropdown({ options, colors, value, onSelect, onClose }: SelectDropdownProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -654,7 +653,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                     saveField({ status: v });
                   }}
                   onClose={() => setShowStatusDropdown(false)}
-                  BadgeComponent={StatusBadge}
+
                 />
               )}
             </div>
@@ -681,7 +680,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                       value={task.priority}
                       onSelect={(v) => saveField({ priority: v })}
                       onClose={() => setShowPriorityDropdown(false)}
-                      BadgeComponent={PriorityBadge}
+
                     />
                   )}
                 </div>

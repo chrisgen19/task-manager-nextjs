@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronUp, ChevronDown, ExternalLink, Calendar, ClipboardList, CornerDownRight } from "lucide-react";
 import { formatDate, isOverdue, formatTaskKey } from "@/lib/utils";
 import { PRIORITIES, STATUSES, PRIORITY_LABELS, STATUS_LABELS, type SortField } from "@/types";

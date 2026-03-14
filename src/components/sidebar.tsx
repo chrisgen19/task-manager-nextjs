@@ -76,8 +76,6 @@ export function Sidebar({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const total = tasks.length;
-  const done = tasks.filter((t) => t.status === STATUS_DONE).length;
-  const active = tasks.filter((t) => t.status === STATUS_IN_PROGRESS).length;
   const overdue = tasks.filter(
     (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== STATUS_DONE
   ).length;

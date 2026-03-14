@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Plus, CornerDownRight } from "lucide-react";
 import { formatTaskKey } from "@/lib/utils";
-import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/types";
+import { STATUSES, STATUS_COLORS } from "@/types";
 import type { Task } from "@/types";
 
 interface KanbanViewProps {

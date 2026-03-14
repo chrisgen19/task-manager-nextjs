@@ -2,7 +2,6 @@
 
 import { Search, Plus, LayoutList, Columns3, Calendar, GitBranch, SlidersHorizontal, X } from "lucide-react";
 import type { ViewType, TaskFilters, TaskSort, SortField } from "@/types";
-import { PRIORITIES, STATUSES } from "@/types";
 
 const VIEW_TABS: { view: ViewType; label: string; icon: React.ReactNode }[] = [
   { view: "list",     label: "List",     icon: <LayoutList size={15} /> },
