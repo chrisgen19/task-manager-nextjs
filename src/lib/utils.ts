@@ -14,9 +14,6 @@ export function formatTaskKey(task: Pick<Task, "workboardKey" | "taskNumber" | "
   return `${task.workboardKey}-${task.taskNumber}`;
 }
 
-export function formatTaskSlug(task: Pick<Task, "workboardKey" | "taskNumber" | "parentId" | "subtaskNumber" | "parentTaskNumber">): string {
-  return formatTaskKey(task);
-}
 
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";

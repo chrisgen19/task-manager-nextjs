@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { formatTaskSlug } from "@/lib/utils";
+import { formatTaskKey } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
@@ -161,7 +161,7 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
   );
 
   const navigateToTask = useCallback((task: Task) => {
-    router.push(`/t/${formatTaskSlug(task)}`);
+    router.push(`/t/${formatTaskKey(task)}`);
   }, [router]);
 
   const closeModal = useCallback(() => {
@@ -198,7 +198,7 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
         closeModal();
 
         // Navigate to the new task page
-        router.push(`/t/${formatTaskSlug(normalized)}`);
+        router.push(`/t/${formatTaskKey(normalized)}`);
       } catch {
         addToast("Network error. Please check your connection.", "error");
       }
@@ -213,8 +213,11 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ showSubtasks: next }),
+    }).catch(() => {
+      setShowSubtasks(!next);
+      addToast("Failed to save preference", "error");
     });
-  }, [showSubtasks]);
+  }, [showSubtasks, addToast]);
 
   const handleStatusChange = useCallback(
     async (taskId: string, newStatus: number) => {

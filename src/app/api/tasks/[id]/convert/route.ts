@@ -63,6 +63,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (parsed.data.type === "to-standalone") {
+      if (!task.parentId) {
+        return NextResponse.json({ error: "Task is already a standalone task" }, { status: 400 });
+      }
       const updated = await db.task.update({
         where: { id },
         data: {

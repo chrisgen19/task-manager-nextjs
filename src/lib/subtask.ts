@@ -7,10 +7,10 @@ const MAX_RETRIES = 3;
  * Allocate the next subtaskNumber and sortOrder for a parent task,
  * retrying on unique constraint violation (P2002) to handle concurrent requests.
  */
-export async function allocateSubtaskNumber(
+export async function allocateSubtaskNumber<T>(
   parentId: string,
-  callback: (tx: Prisma.TransactionClient, subtaskNumber: number, sortOrder: number) => Promise<unknown>,
-): Promise<unknown> {
+  callback: (tx: Prisma.TransactionClient, subtaskNumber: number, sortOrder: number) => Promise<T>,
+): Promise<T> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       return await db.$transaction(async (tx) => {
@@ -39,4 +39,5 @@ export async function allocateSubtaskNumber(
       throw error;
     }
   }
+  throw new Error("Failed to allocate subtask number after retries");
 }

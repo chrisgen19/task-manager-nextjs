@@ -155,9 +155,16 @@ export function Sidebar({
 
   const handleDelete = async (w: Workboard) => {
     if (!confirm(`Delete board "${w.name}" and all its tasks?`)) return;
-    const res = await fetch(`/api/workboards/${w.id}`, { method: "DELETE" });
-    if (res.ok) {
-      onWorkboardDelete(w.id);
+    try {
+      const res = await fetch(`/api/workboards/${w.id}`, { method: "DELETE" });
+      if (res.ok) {
+        onWorkboardDelete(w.id);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setFormError(body.error ?? "Failed to delete board");
+      }
+    } catch {
+      setFormError("Failed to delete board");
     }
   };
 

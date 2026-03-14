@@ -23,7 +23,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const updates = parsed.data.subtaskIds.map((subtaskId, index) =>
       db.task.updateMany({
-        where: { id: subtaskId, parentId },
+        where: { id: subtaskId, parentId, userId: session.user.id },
         data: { sortOrder: index },
       })
     );

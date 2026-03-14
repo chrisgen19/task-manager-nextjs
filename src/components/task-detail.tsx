@@ -9,7 +9,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { RichTextEditor } from "./rich-text-editor";
-import { formatTaskKey, formatTaskSlug } from "@/lib/utils";
+import { formatTaskKey } from "@/lib/utils";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS } from "@/types";
 import type { Task } from "@/types";
 
@@ -151,7 +151,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
   const [showSubtasks, setShowSubtasks] = useState(true);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
-  const taskSlug = formatTaskSlug(task);
+  const taskSlug = formatTaskKey(task);
   const isSubtask = !!task.parentId;
   const hasSubtasks = subtasks.length > 0;
   const subtasksDone = subtasks.filter((s) => s.status === 4).length;
@@ -229,8 +229,17 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
       ? `Delete "${task.title}" and its ${subtasks.length} subtask(s)? This cannot be undone.`
       : `Delete "${task.title}"? This cannot be undone.`;
     if (!confirm(msg)) return;
-    const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/dashboard");
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setSaveError(body.error ?? "Failed to delete task");
+      }
+    } catch {
+      setSaveError("Failed to delete task");
+    }
   };
 
   const handleCreateSubtask = async () => {
@@ -576,7 +585,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                         setDragIdx(null);
                       }}
                       onDragEnd={() => setDragIdx(null)}
-                      onClick={() => router.push(`/t/${formatTaskSlug(sub)}`)}
+                      onClick={() => router.push(`/t/${formatTaskKey(sub)}`)}
                       className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors"
                       style={{ background: dragIdx === idx ? "var(--bg-tertiary)" : "transparent" }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)"; }}
