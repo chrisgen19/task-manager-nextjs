@@ -90,6 +90,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (message === "Cannot convert a task with subtasks" || message === "Cannot add subtasks to a subtask") {
       return NextResponse.json({ error: message }, { status: 409 });
     }
+    const isDeadlock =
+      error !== null && typeof error === "object" && "code" in error && (error as { code: string }).code === "40P01";
+    if (isDeadlock) {
+      return NextResponse.json({ error: "Conflict — please try again" }, { status: 409 });
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
