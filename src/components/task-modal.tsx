@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X, ExternalLink } from "lucide-react";
 import { taskSchema } from "@/schemas";
@@ -49,7 +49,6 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
     handleSubmit,
     control,
     reset,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<TaskFormValues, unknown, TaskInput>({
     resolver: zodResolver(taskSchema),
@@ -64,8 +63,8 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
     },
   });
 
-  const watchedPriority = watch("priority");
-  const watchedStatus = watch("status");
+  const watchedPriority = useWatch({ control, name: "priority" });
+  const watchedStatus = useWatch({ control, name: "status" });
 
   useEffect(() => {
     reset({
