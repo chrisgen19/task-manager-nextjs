@@ -87,6 +87,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
+    if (message === "Parent task not found") {
+      return NextResponse.json({ error: message }, { status: 404 });
+    }
     if (message === "Cannot convert a task with subtasks" || message === "Cannot add subtasks to a subtask") {
       return NextResponse.json({ error: message }, { status: 409 });
     }
