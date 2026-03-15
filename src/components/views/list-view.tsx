@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp, ChevronDown, ExternalLink, Calendar, ClipboardList, CornerDownRight } from "lucide-react";
+import { ChevronUp, ChevronDown, ExternalLink, Calendar, ClipboardList, CornerDownRight, SquareCheckBig } from "lucide-react";
 import { formatDate, isOverdue, formatTaskKey } from "@/lib/utils";
 import { PRIORITIES, STATUSES, PRIORITY_LABELS, STATUS_LABELS, type SortField } from "@/types";
 import type { Task, TaskSort } from "@/types";
@@ -63,7 +63,7 @@ export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProp
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
           <tr>
-            <th style={{ ...thStyle, cursor: "default", width: "80px" }}>Key</th>
+            <th style={{ ...thStyle, cursor: "default", width: "120px" }}>Key</th>
             <th style={thStyle} onClick={() => handleSort("priority")}>
               <span className="flex items-center gap-1">Priority <SortIcon field="priority" sort={sort} /></span>
             </th>
@@ -95,8 +95,11 @@ export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProp
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
               >
                 <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "0.75rem" }}>
-                  <span className="flex items-center gap-1" style={{ color: "var(--text-tertiary)", fontWeight: 600 }}>
-                    {task.parentId && <CornerDownRight size={10} />}
+                  <span className="flex items-center gap-1.5" style={{ color: "var(--text-tertiary)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                    {task.parentId
+                      ? <CornerDownRight size={11} className="shrink-0" style={{ color: "var(--status-in-progress)" }} />
+                      : <SquareCheckBig size={11} className="shrink-0" style={{ color: "var(--status-todo)" }} />
+                    }
                     {formatTaskKey(task)}
                   </span>
                 </td>

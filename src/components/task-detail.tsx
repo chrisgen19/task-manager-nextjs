@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ChevronRight, ExternalLink, Copy, Check, Trash2, Calendar,
   ChevronDown, Pencil, X, Plus, GripVertical,
-  ArrowUpRight,
+  ArrowUpRight, Info, Tag, User, Briefcase, Link2, Clock,
 } from "lucide-react";
 import { RichTextEditor } from "./rich-text-editor";
 import { formatTaskKey } from "@/lib/utils";
@@ -28,18 +28,19 @@ function PriorityBadge({ priority, onClick }: { priority: number; onClick?: () =
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-opacity"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
       style={{
-        background: `color-mix(in srgb, ${PRIORITY_COLORS[priority]} 15%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${PRIORITY_COLORS[priority]} 30%, transparent)`,
+        background: `color-mix(in srgb, ${PRIORITY_COLORS[priority]} 14%, transparent)`,
+        border: `1.5px solid color-mix(in srgb, ${PRIORITY_COLORS[priority]} 25%, transparent)`,
         color: PRIORITY_COLORS[priority],
         cursor: onClick ? "pointer" : "default",
+        boxShadow: `0 1px 3px color-mix(in srgb, ${PRIORITY_COLORS[priority]} 10%, transparent)`,
       }}
       title={onClick ? "Click to change priority" : undefined}
     >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: PRIORITY_COLORS[priority] }} />
+      <span className="w-2 h-2 rounded-full" style={{ background: PRIORITY_COLORS[priority] }} />
       {PRIORITIES[priority]}
-      {onClick && <ChevronDown size={11} />}
+      {onClick && <ChevronDown size={11} className="opacity-60" />}
     </button>
   );
 }
@@ -48,18 +49,19 @@ function StatusBadge({ status, onClick }: { status: number; onClick?: () => void
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-opacity"
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
       style={{
-        background: `color-mix(in srgb, ${STATUS_COLORS[status]} 15%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${STATUS_COLORS[status]} 30%, transparent)`,
+        background: `color-mix(in srgb, ${STATUS_COLORS[status]} 14%, transparent)`,
+        border: `1.5px solid color-mix(in srgb, ${STATUS_COLORS[status]} 25%, transparent)`,
         color: STATUS_COLORS[status],
         cursor: onClick ? "pointer" : "default",
+        boxShadow: `0 1px 3px color-mix(in srgb, ${STATUS_COLORS[status]} 10%, transparent)`,
       }}
       title={onClick ? "Click to change status" : undefined}
     >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_COLORS[status] }} />
+      <span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLORS[status] }} />
       {STATUSES[status]}
-      {onClick && <ChevronDown size={11} />}
+      {onClick && <ChevronDown size={11} className="opacity-60" />}
     </button>
   );
 }
@@ -86,41 +88,47 @@ function SelectDropdown({ options, colors, value, onSelect, onClose }: SelectDro
   return (
     <div
       ref={ref}
-      className="absolute z-50 rounded-lg shadow-xl overflow-hidden"
+      className="absolute z-50 rounded-xl overflow-hidden"
       style={{
-        top: "calc(100% + 4px)",
+        top: "calc(100% + 6px)",
         left: 0,
         background: "var(--bg-secondary)",
-        border: "1px solid var(--border-primary)",
-        minWidth: "140px",
+        border: "1px solid var(--border-secondary)",
+        minWidth: "160px",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15)",
       }}
     >
-      {options.map((_, i) => (
-        <button
-          key={i}
-          onClick={() => { onSelect(i); onClose(); }}
-          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors"
-          style={{
-            background: value === i ? "var(--bg-tertiary)" : "transparent",
-            color: "var(--text-primary)",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = value === i ? "var(--bg-tertiary)" : "transparent"; }}
-        >
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colors[i] }} />
-          {options[i]}
-          {value === i && <Check size={11} className="ml-auto" style={{ color: colors[i] }} />}
-        </button>
-      ))}
+      <div className="py-1.5">
+        {options.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => { onSelect(i); onClose(); }}
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-left transition-colors"
+            style={{
+              background: value === i ? "var(--bg-tertiary)" : "transparent",
+              color: "var(--text-primary)",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = value === i ? "var(--bg-tertiary)" : "transparent"; }}
+          >
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colors[i] }} />
+            <span className="font-medium">{options[i]}</span>
+            {value === i && <Check size={12} className="ml-auto" style={{ color: colors[i] }} />}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailRow({ label, icon: Icon, children }: { label: string; icon?: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 py-2" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-      <span className="text-xs w-24 shrink-0 pt-1" style={{ color: "var(--text-tertiary)" }}>{label}</span>
-      <div className="flex-1">{children}</div>
+    <div className="flex items-center gap-3 py-3">
+      <div className="flex items-center gap-2 w-[100px] shrink-0">
+        {Icon && <Icon size={13} style={{ color: "var(--text-tertiary)" }} />}
+        <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>{label}</span>
+      </div>
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
 }
@@ -328,12 +336,26 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const statusColor = STATUS_COLORS[task.status];
+
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      {/* Status accent bar */}
+      <div
+        className="shrink-0"
+        style={{
+          height: "3px",
+          background: `linear-gradient(90deg, ${statusColor}, color-mix(in srgb, ${statusColor} 40%, transparent))`,
+        }}
+      />
+
       {/* Top breadcrumb bar */}
       <div
         className="flex items-center gap-2 px-6 py-3 shrink-0"
-        style={{ borderBottom: "1px solid var(--border-primary)", background: "var(--bg-secondary)" }}
+        style={{
+          borderBottom: "1px solid var(--border-primary)",
+          background: "var(--bg-secondary)",
+        }}
       >
         <Link
           href="/dashboard"
@@ -354,8 +376,12 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
         {/* Copy link */}
         <button
           onClick={copyLink}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
-          style={{ background: "var(--bg-tertiary)", color: copied ? "var(--status-done)" : "var(--text-secondary)" }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+          style={{
+            background: copied ? "color-mix(in srgb, var(--status-done) 15%, transparent)" : "var(--bg-tertiary)",
+            color: copied ? "var(--status-done)" : "var(--text-secondary)",
+            border: copied ? "1px solid color-mix(in srgb, var(--status-done) 30%, transparent)" : "1px solid transparent",
+          }}
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
           {copied ? "Copied!" : "Copy link"}
@@ -367,7 +393,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
             href={task.jiraUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
             style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
           >
             <ExternalLink size={12} />
@@ -377,12 +403,20 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
 
         {/* Saving indicator */}
         {isSaving && (
-          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Saving…</span>
+          <span className="text-xs animate-pulse" style={{ color: "var(--status-in-progress)" }}>Saving…</span>
         )}
       </div>
 
       {saveError && (
-        <div className="px-6 py-2 text-xs" style={{ background: "color-mix(in srgb, var(--priority-critical) 10%, transparent)", color: "var(--priority-critical)" }}>
+        <div
+          className="px-6 py-2.5 text-xs font-medium flex items-center gap-2"
+          style={{
+            background: "color-mix(in srgb, var(--priority-critical) 12%, transparent)",
+            color: "var(--priority-critical)",
+            borderBottom: "1px solid color-mix(in srgb, var(--priority-critical) 25%, transparent)",
+          }}
+        >
+          <Info size={13} />
           {saveError}
         </div>
       )}
@@ -392,15 +426,19 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
 
         {/* LEFT: Title + Description */}
         <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
-        <div className="flex flex-col gap-6 w-full py-6 px-8">
+        <div className="flex flex-col gap-8 w-full py-8 px-8">
 
           {/* Parent breadcrumb for subtasks */}
           {isSubtask && task.parentTaskNumber != null && (
             <div>
               <Link
                 href={`/t/${task.workboardKey}-${task.parentTaskNumber}`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
-                style={{ background: "var(--bg-tertiary)", color: "var(--status-todo)" }}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+                style={{
+                  background: "color-mix(in srgb, var(--status-todo) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--status-todo) 20%, transparent)",
+                  color: "var(--status-todo)",
+                }}
               >
                 <ArrowUpRight size={12} />
                 Subtask of {task.workboardKey}-{task.parentTaskNumber}
@@ -408,13 +446,23 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
             </div>
           )}
 
-          {/* Task type badge */}
-          <div>
+          {/* Task type badge + task key */}
+          <div className="flex items-center gap-2">
             <span
-              className="text-xs font-semibold px-2.5 py-1 rounded uppercase tracking-wider"
-              style={{ background: "var(--bg-tertiary)", color: "var(--text-tertiary)" }}
+              className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-widest"
+              style={{
+                background: `color-mix(in srgb, ${statusColor} 12%, transparent)`,
+                color: statusColor,
+                border: `1px solid color-mix(in srgb, ${statusColor} 20%, transparent)`,
+              }}
             >
-              {isSubtask ? "Subtask" : "Task"} · {taskSlug}
+              {isSubtask ? "Subtask" : "Task"}
+            </span>
+            <span
+              className="text-xs font-mono font-semibold"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {taskSlug}
             </span>
           </div>
 
@@ -431,12 +479,13 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTitleSave(); }
                     if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false); }
                   }}
-                  className="flex-1 text-2xl font-bold rounded-lg px-3 py-2 resize-none outline-none leading-tight"
+                  className="flex-1 text-2xl font-bold rounded-xl px-4 py-3 resize-none outline-none leading-tight"
                   style={{
                     background: "var(--bg-tertiary)",
-                    border: "2px solid var(--status-todo)",
+                    border: `2px solid ${statusColor}`,
                     color: "var(--text-primary)",
                     minHeight: "80px",
+                    boxShadow: `0 0 0 3px color-mix(in srgb, ${statusColor} 15%, transparent)`,
                   }}
                   rows={2}
                 />
@@ -460,12 +509,12 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
 
           {/* Description — inline edit */}
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-3">
               <h3 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Description</h3>
               {!editingDescription && (
                 <button
                   onClick={() => setEditingDescription(true)}
-                  className="p-0.5 rounded opacity-0 hover:opacity-100 transition-opacity"
+                  className="p-1 rounded-md opacity-0 hover:opacity-100 transition-opacity"
                   style={{ color: "var(--text-tertiary)" }}
                   title="Edit description"
                   id="edit-desc-btn"
@@ -477,7 +526,14 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
 
             {editingDescription ? (
               <div>
-                <div style={{ minHeight: "180px" }}>
+                <div
+                  className="rounded-xl overflow-hidden"
+                  style={{
+                    border: `2px solid ${statusColor}`,
+                    boxShadow: `0 0 0 3px color-mix(in srgb, ${statusColor} 15%, transparent)`,
+                    minHeight: "180px",
+                  }}
+                >
                   <RichTextEditor value={descValue} onChange={setDescValue} />
                 </div>
                 <div
@@ -486,14 +542,18 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                 >
                   <button
                     onClick={handleDescriptionSave}
-                    className="px-4 py-1.5 rounded-lg text-xs font-medium"
-                    style={{ background: "var(--status-todo)", color: "#fff" }}
+                    className="px-5 py-2 rounded-lg text-xs font-semibold transition-all"
+                    style={{
+                      background: statusColor,
+                      color: "#fff",
+                      boxShadow: `0 2px 8px color-mix(in srgb, ${statusColor} 35%, transparent)`,
+                    }}
                   >
                     Save
                   </button>
                   <button
                     onClick={() => { setDescValue(task.description); setEditingDescription(false); }}
-                    className="px-4 py-1.5 rounded-lg text-xs font-medium"
+                    className="px-5 py-2 rounded-lg text-xs font-semibold"
                     style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
                   >
                     Cancel
@@ -507,14 +567,18 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                   if (selection && selection.toString().length > 0) return;
                   setEditingDescription(true);
                 }}
-                className="cursor-text rounded-lg transition-colors"
-                style={{ border: "1px solid transparent", padding: "10px 12px", minHeight: "80px" }}
+                className="cursor-text rounded-xl transition-all"
+                style={{
+                  border: "1.5px solid transparent",
+                  padding: "12px 14px",
+                  minHeight: "80px",
+                }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.border = "1px solid var(--border-primary)";
-                  (e.currentTarget as HTMLDivElement).style.background = "color-mix(in srgb, var(--bg-tertiary) 40%, transparent)";
+                  (e.currentTarget as HTMLDivElement).style.border = "1.5px solid var(--border-secondary)";
+                  (e.currentTarget as HTMLDivElement).style.background = "color-mix(in srgb, var(--bg-tertiary) 30%, transparent)";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.border = "1px solid transparent";
+                  (e.currentTarget as HTMLDivElement).style.border = "1.5px solid transparent";
                   (e.currentTarget as HTMLDivElement).style.background = "transparent";
                 }}
                 title="Click to edit description"
@@ -536,10 +600,10 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
           {/* Subtasks section (only for non-subtask tasks) */}
           {!isSubtask && (
             <div>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-3 mb-3">
                 <button
                   onClick={() => setShowSubtasks((v) => !v)}
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1.5"
                 >
                   <ChevronDown
                     size={14}
@@ -552,17 +616,32 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                   <h3 className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>Subtasks</h3>
                 </button>
                 {subtasks.length > 0 && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+                  <span
+                    className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
+                    style={{
+                      background: subtasksDone === subtasks.length
+                        ? "color-mix(in srgb, var(--status-done) 15%, transparent)"
+                        : "var(--bg-tertiary)",
+                      color: subtasksDone === subtasks.length
+                        ? "var(--status-done)"
+                        : "var(--text-secondary)",
+                    }}
+                  >
                     {subtasksDone}/{subtasks.length}
                   </span>
                 )}
                 {subtasks.length > 0 && (
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-tertiary)", maxWidth: "120px" }}>
+                  <div
+                    className="flex-1 h-1.5 rounded-full overflow-hidden"
+                    style={{ background: "var(--bg-tertiary)", maxWidth: "120px" }}
+                  >
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
                         width: `${(subtasksDone / subtasks.length) * 100}%`,
-                        background: subtasksDone === subtasks.length ? "var(--status-done)" : "var(--status-todo)",
+                        background: subtasksDone === subtasks.length
+                          ? "var(--status-done)"
+                          : `linear-gradient(90deg, var(--status-todo), var(--status-in-progress))`,
                       }}
                     />
                   </div>
@@ -570,7 +649,13 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
               </div>
 
               {showSubtasks && (
-                <div className="space-y-1">
+                <div
+                  className="rounded-xl overflow-hidden"
+                  style={{
+                    border: "1px solid var(--border-primary)",
+                    background: "color-mix(in srgb, var(--bg-secondary) 50%, transparent)",
+                  }}
+                >
                   {/* Subtask list */}
                   {subtasks.map((sub, idx) => (
                     <div
@@ -586,15 +671,20 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                       }}
                       onDragEnd={() => setDragIdx(null)}
                       onClick={() => router.push(`/t/${formatTaskKey(sub)}`)}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors"
-                      style={{ background: dragIdx === idx ? "var(--bg-tertiary)" : "transparent" }}
+                      className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer group transition-colors"
+                      style={{
+                        background: dragIdx === idx ? "var(--bg-tertiary)" : "transparent",
+                        borderBottom: idx < subtasks.length - 1 ? "1px solid var(--border-primary)" : "none",
+                      }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = dragIdx === idx ? "var(--bg-tertiary)" : "transparent"; }}
                     >
                       <GripVertical size={12} className="opacity-0 group-hover:opacity-50 shrink-0 cursor-grab" style={{ color: "var(--text-tertiary)" }} />
                       <span
-                        className="w-3.5 h-3.5 rounded-sm border-2 shrink-0 flex items-center justify-center"
+                        className="w-4 h-4 rounded shrink-0 flex items-center justify-center transition-colors"
                         style={{
+                          borderWidth: "2px",
+                          borderStyle: "solid",
                           borderColor: STATUS_COLORS[sub.status],
                           background: sub.status === 4 ? STATUS_COLORS[4] : "transparent",
                         }}
@@ -622,7 +712,13 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                   ))}
 
                   {/* Inline creation */}
-                  <div className="flex items-center gap-2 px-2 py-1">
+                  <div
+                    className="flex items-center gap-2.5 px-3 py-2.5"
+                    style={{
+                      borderTop: subtasks.length > 0 ? "1px solid var(--border-primary)" : "none",
+                      background: "color-mix(in srgb, var(--bg-tertiary) 30%, transparent)",
+                    }}
+                  >
                     <Plus size={14} style={{ color: "var(--text-tertiary)" }} />
                     <input
                       type="text"
@@ -654,8 +750,12 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                 {task.workboardName.charAt(0).toUpperCase()}
               </div>
               <div
-                className="flex-1 rounded-lg px-3 py-2 text-sm"
-                style={{ background: "var(--bg-tertiary)", border: "1px solid var(--border-primary)", color: "var(--text-tertiary)" }}
+                className="flex-1 rounded-xl px-4 py-3 text-sm"
+                style={{
+                  background: "color-mix(in srgb, var(--bg-tertiary) 50%, transparent)",
+                  border: "1px solid var(--border-primary)",
+                  color: "var(--text-tertiary)",
+                }}
               >
                 Activity &amp; comments coming soon…
               </div>
@@ -666,12 +766,16 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
 
         {/* RIGHT: Details panel */}
         <div
-          className="shrink-0 overflow-y-auto py-6 px-5 flex flex-col gap-1"
-          style={{ width: "300px", borderLeft: "1px solid var(--border-primary)" }}
+          className="shrink-0 overflow-y-auto py-6 px-5 flex flex-col gap-2"
+          style={{
+            width: "320px",
+            borderLeft: "1px solid var(--border-primary)",
+            background: "color-mix(in srgb, var(--bg-secondary) 60%, var(--bg-primary))",
+          }}
         >
           {/* Status */}
-          <div className="mb-4">
-            <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-tertiary)" }}>
+          <div className="mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-2.5" style={{ color: "var(--text-tertiary)" }}>
               Status
             </p>
             <div className="relative inline-block">
@@ -692,21 +796,34 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                     saveField({ status: v });
                   }}
                   onClose={() => setShowStatusDropdown(false)}
-
                 />
               )}
             </div>
           </div>
 
           {/* Details section */}
-          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--border-primary)" }}>
-            <div className="px-4 py-2" style={{ background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border-primary)" }}>
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Details</p>
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{
+              border: "1px solid var(--border-primary)",
+              background: "var(--bg-secondary)",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+            }}
+          >
+            <div
+              className="px-4 py-2.5 flex items-center gap-2"
+              style={{
+                background: "color-mix(in srgb, var(--bg-tertiary) 60%, transparent)",
+                borderBottom: "1px solid var(--border-primary)",
+              }}
+            >
+              <Info size={12} style={{ color: "var(--text-tertiary)" }} />
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-tertiary)" }}>Details</p>
             </div>
-            <div className="px-4 divide-y" style={{ borderColor: "var(--border-primary)" }}>
+            <div className="px-4 py-1">
 
               {/* Priority */}
-              <DetailRow label="Priority">
+              <DetailRow label="Priority" icon={Tag}>
                 <div className="relative inline-block">
                   <PriorityBadge
                     priority={task.priority}
@@ -719,22 +836,24 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                       value={task.priority}
                       onSelect={(v) => saveField({ priority: v })}
                       onClose={() => setShowPriorityDropdown(false)}
-
                     />
                   )}
                 </div>
               </DetailRow>
 
+              {/* Divider */}
+              <div style={{ height: "1px", background: "var(--border-primary)" }} />
+
               {/* Board */}
-              <DetailRow label="Board">
+              <DetailRow label="Board" icon={Briefcase}>
                 <Link
                   href="/dashboard"
                   className="text-xs font-medium flex items-center gap-1.5 transition-colors"
                   style={{ color: "var(--status-todo)" }}
                 >
                   <span
-                    className="text-xs font-bold px-1 rounded"
-                    style={{ background: "var(--status-todo)", color: "#fff", fontSize: "0.625rem" }}
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ background: "var(--status-todo)", color: "#fff" }}
                   >
                     {task.workboardKey}
                   </span>
@@ -742,34 +861,43 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                 </Link>
               </DetailRow>
 
+              {/* Divider */}
+              <div style={{ height: "1px", background: "var(--border-primary)" }} />
+
               {/* Assignee */}
-              <DetailRow label="Assignee">
+              <DetailRow label="Assignee" icon={User}>
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{ background: "var(--status-in-progress)", color: "#fff", fontSize: "0.625rem" }}
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                    style={{ background: "var(--status-in-progress)", color: "#fff" }}
                   >
                     {task.workboardName.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs" style={{ color: "var(--text-primary)" }}>Me</span>
+                  <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Me</span>
                 </div>
               </DetailRow>
+
+              {/* Divider */}
+              <div style={{ height: "1px", background: "var(--border-primary)" }} />
 
               {/* Reporter */}
-              <DetailRow label="Reporter">
+              <DetailRow label="Reporter" icon={User}>
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-                    style={{ background: "var(--status-in-progress)", color: "#fff", fontSize: "0.625rem" }}
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                    style={{ background: "var(--status-in-progress)", color: "#fff" }}
                   >
                     {task.workboardName.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-xs" style={{ color: "var(--text-primary)" }}>Me</span>
+                  <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Me</span>
                 </div>
               </DetailRow>
 
+              {/* Divider */}
+              <div style={{ height: "1px", background: "var(--border-primary)" }} />
+
               {/* Due Date */}
-              <DetailRow label="Due Date">
+              <DetailRow label="Due Date" icon={Calendar}>
                 {editingDueDate ? (
                   <input
                     type="date"
@@ -781,11 +909,12 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                       if (e.key === "Enter") handleDueDateSave(dueDateValue);
                       if (e.key === "Escape") setEditingDueDate(false);
                     }}
-                    className="text-xs rounded px-2 py-1 outline-none"
+                    className="text-xs rounded-lg px-2.5 py-1.5 outline-none"
                     style={{
                       background: "var(--bg-tertiary)",
-                      border: "1px solid var(--status-todo)",
+                      border: `1.5px solid ${statusColor}`,
                       color: "var(--text-primary)",
+                      boxShadow: `0 0 0 2px color-mix(in srgb, ${statusColor} 15%, transparent)`,
                     }}
                   />
                 ) : (
@@ -794,15 +923,18 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                     className="flex items-center gap-1.5 text-xs transition-colors group"
                     style={{ color: task.dueDate ? "var(--text-primary)" : "var(--text-tertiary)" }}
                   >
-                    <Calendar size={12} />
-                    <span>{task.dueDate ? formatDateTime(task.dueDate) : "None"}</span>
+                    <Clock size={12} />
+                    <span className="font-medium">{task.dueDate ? formatDateTime(task.dueDate) : "None"}</span>
                     <Pencil size={10} className="opacity-0 group-hover:opacity-50 transition-opacity" />
                   </button>
                 )}
               </DetailRow>
 
+              {/* Divider */}
+              <div style={{ height: "1px", background: "var(--border-primary)" }} />
+
               {/* Jira URL */}
-              <DetailRow label="Jira Link">
+              <DetailRow label="Jira Link" icon={Link2}>
                 {editingJiraUrl ? (
                   <div className="flex items-center gap-1">
                     <input
@@ -816,11 +948,12 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                         if (e.key === "Escape") { setJiraUrlValue(task.jiraUrl); setEditingJiraUrl(false); }
                       }}
                       placeholder="https://…"
-                      className="flex-1 text-xs rounded px-2 py-1 outline-none"
+                      className="flex-1 text-xs rounded-lg px-2.5 py-1.5 outline-none"
                       style={{
                         background: "var(--bg-tertiary)",
-                        border: "1px solid var(--status-todo)",
+                        border: `1.5px solid ${statusColor}`,
                         color: "var(--text-primary)",
+                        boxShadow: `0 0 0 2px color-mix(in srgb, ${statusColor} 15%, transparent)`,
                       }}
                     />
                     <button onClick={() => setEditingJiraUrl(false)} style={{ color: "var(--text-tertiary)" }}>
@@ -834,7 +967,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                         href={task.jiraUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs flex items-center gap-1 truncate"
+                        className="text-xs flex items-center gap-1 truncate font-medium"
                         style={{ color: "var(--status-todo)" }}
                       >
                         <ExternalLink size={11} />
@@ -858,12 +991,20 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
           </div>
 
           {/* Dates */}
-          <div className="mt-4 space-y-1.5">
-            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-              Created <span style={{ color: "var(--text-secondary)" }}>{formatDateTime(task.createdAt)}</span>
+          <div
+            className="mt-3 rounded-xl px-4 py-3 space-y-2"
+            style={{
+              background: "color-mix(in srgb, var(--bg-tertiary) 30%, transparent)",
+              border: "1px solid var(--border-primary)",
+            }}
+          >
+            <p className="text-xs flex items-center justify-between" style={{ color: "var(--text-tertiary)" }}>
+              <span>Created</span>
+              <span className="font-medium" style={{ color: "var(--text-secondary)" }}>{formatDateTime(task.createdAt)}</span>
             </p>
-            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-              Updated <span style={{ color: "var(--text-secondary)" }}>{formatDateTime(task.updatedAt)}</span>
+            <p className="text-xs flex items-center justify-between" style={{ color: "var(--text-tertiary)" }}>
+              <span>Updated</span>
+              <span className="font-medium" style={{ color: "var(--text-secondary)" }}>{formatDateTime(task.updatedAt)}</span>
             </p>
           </div>
 
@@ -873,12 +1014,14 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
             {isSubtask && (
               <button
                 onClick={handleConvertToStandalone}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{
                   color: "var(--status-todo)",
-                  background: "color-mix(in srgb, var(--status-todo) 10%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--status-todo) 20%, transparent)",
+                  background: "color-mix(in srgb, var(--status-todo) 8%, transparent)",
+                  border: "1.5px solid color-mix(in srgb, var(--status-todo) 20%, transparent)",
                 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in srgb, var(--status-todo) 15%, transparent)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in srgb, var(--status-todo) 8%, transparent)"; }}
               >
                 <ArrowUpRight size={14} />
                 Convert to standalone task
@@ -887,12 +1030,14 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
 
             <button
               onClick={handleDelete}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
               style={{
                 color: "var(--priority-critical)",
-                background: "color-mix(in srgb, var(--priority-critical) 10%, transparent)",
-                border: "1px solid color-mix(in srgb, var(--priority-critical) 20%, transparent)",
+                background: "color-mix(in srgb, var(--priority-critical) 8%, transparent)",
+                border: "1.5px solid color-mix(in srgb, var(--priority-critical) 20%, transparent)",
               }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in srgb, var(--priority-critical) 15%, transparent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "color-mix(in srgb, var(--priority-critical) 8%, transparent)"; }}
             >
               <Trash2 size={14} />
               Delete {isSubtask ? "subtask" : "task"}
