@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { commentSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
+import { deleteManyFromR2 } from "@/lib/r2";
 
 type Params = { params: Promise<{ id: string; commentId: string }> };
 
@@ -47,6 +48,18 @@ export async function DELETE(_req: Request, { params }: Params) {
   });
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Collect R2 keys before deleting
+  const attachments = await db.attachment.findMany({
+    where: { commentId },
+    select: { r2Key: true },
+  });
+
   await db.comment.delete({ where: { id: commentId } });
+
+  // Delete files from R2 after DB deletion succeeds
+  if (attachments.length > 0) {
+    deleteManyFromR2(attachments.map((a) => a.r2Key)).catch(() => {});
+  }
+
   return NextResponse.json({ success: true });
 }

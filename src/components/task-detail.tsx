@@ -539,7 +539,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                     minHeight: "180px",
                   }}
                 >
-                  <RichTextEditor value={descValue} onChange={setDescValue} onUploadingChange={setIsUploadingFile} />
+                  <RichTextEditor value={descValue} onChange={setDescValue} onUploadingChange={setIsUploadingFile} taskId={task.id} />
                 </div>
                 <div
                   className="flex items-center gap-2 sticky bottom-0 py-3"

@@ -37,6 +37,10 @@ export async function deleteFromR2(key: string): Promise<void> {
   );
 }
 
+export async function deleteManyFromR2(keys: string[]): Promise<void> {
+  await Promise.all(keys.map((key) => deleteFromR2(key)));
+}
+
 export function generateFileKey(userId: string, filename: string): string {
   const sanitized = filename
     .replace(/[^a-zA-Z0-9._-]/g, "_")

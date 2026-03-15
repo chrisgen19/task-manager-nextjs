@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { taskSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
 import { detectChanges } from "@/lib/activity";
+import { deleteManyFromR2 } from "@/lib/r2";
 
 const taskInclude = {
   workboard: { select: { key: true, name: true } },
@@ -97,6 +98,17 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const existing = await getTaskOrFail(id, session.user.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Collect R2 keys before deleting (includes subtask attachments via cascade)
+  const attachments = await db.attachment.findMany({
+    where: {
+      OR: [
+        { taskId: id },
+        { task: { parentId: id } },
+      ],
+    },
+    select: { r2Key: true },
+  });
+
   if (existing.parentId) {
     await db.$transaction(async (tx) => {
       await tx.activityLog.create({
@@ -111,6 +123,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     });
   } else {
     await db.task.delete({ where: { id } });
+  }
+
+  // Delete files from R2 after DB deletion succeeds
+  if (attachments.length > 0) {
+    deleteManyFromR2(attachments.map((a) => a.r2Key)).catch(() => {});
   }
 
   return NextResponse.json({ success: true });
