@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { getUserAppearance } from "@/lib/user-prefs";
 import SessionProvider from "@/components/session-provider";
 import { ThemeSync } from "@/components/theme-sync";
 import type { Theme } from "@/components/theme-toggle";
@@ -9,14 +9,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth();
   if (!session) redirect("/login");
 
-  const userPrefs = await db.user.findUniqueOrThrow({
-    where: { id: session.user.id },
-    select: { theme: true, accentColor: true },
-  });
+  // Reuses the same cached query from root layout (no duplicate DB call)
+  const prefs = await getUserAppearance();
 
   return (
     <SessionProvider session={session}>
-      <ThemeSync theme={userPrefs.theme as Theme} accentColor={userPrefs.accentColor} />
+      <ThemeSync
+        theme={(prefs?.theme ?? "dark") as Theme}
+        accentColor={prefs?.accentColor ?? "blue"}
+      />
       <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
         {children}
       </div>

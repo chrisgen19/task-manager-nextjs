@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { getUserAppearance } from "@/lib/user-prefs";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,9 +9,18 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const theme = cookieStore.get("theme")?.value;
-  const accent = cookieStore.get("accentColor")?.value;
+  // DB is the source of truth for signed-in users
+  const prefs = await getUserAppearance();
+
+  // Fall back to cookies for unauthenticated pages (login/register)
+  let theme = prefs?.theme;
+  let accent = prefs?.accentColor;
+
+  if (!prefs) {
+    const cookieStore = await cookies();
+    theme = cookieStore.get("theme")?.value;
+    accent = cookieStore.get("accentColor")?.value;
+  }
 
   return (
     <html
@@ -19,14 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       data-accent={accent || undefined}
       suppressHydrationWarning
     >
-      <head>
-        {/* Fallback for first visit before cookies exist */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(document.documentElement.className.indexOf('light')===-1){var t=localStorage.getItem('theme');if(t==='light')document.documentElement.classList.add('light')}if(!document.documentElement.getAttribute('data-accent')){var a=localStorage.getItem('accentColor');if(a)document.documentElement.setAttribute('data-accent',a)}}catch(e){}})()`,
-          }}
-        />
-      </head>
+      <head />
       <body>{children}</body>
     </html>
   );
