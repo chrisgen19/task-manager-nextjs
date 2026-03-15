@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
     const user = await db.user.update({
       where: { id: session.user.id },
       data: parsed.data,
-      select: { showSubtasks: true },
+      select: { showSubtasks: true, theme: true, accentColor: true },
     });
 
     return NextResponse.json(user);

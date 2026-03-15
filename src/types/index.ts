@@ -63,18 +63,18 @@ export const PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
 export const STATUSES = ["Backlog", "To Do", "In Progress", "Review", "Done"] as const;
 
 export const PRIORITY_COLORS: Record<number, string> = {
-  0: "#22c55e",
-  1: "#eab308",
-  2: "#f97316",
-  3: "#ef4444",
+  0: "var(--priority-low)",
+  1: "var(--priority-medium)",
+  2: "var(--priority-high)",
+  3: "var(--priority-critical)",
 };
 
 export const STATUS_COLORS: Record<number, string> = {
-  0: "#6b7280",
-  1: "#3b82f6",
-  2: "#6366f1",
-  3: "#a855f7",
-  4: "#22c55e",
+  0: "var(--status-backlog)",
+  1: "var(--status-todo)",
+  2: "var(--status-in-progress)",
+  3: "var(--status-review)",
+  4: "var(--status-done)",
 };
 
 export const PRIORITY_LABELS: Record<number, string> = {

@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light";
 
+let currentTheme: Theme = "dark";
 let listeners: Array<() => void> = [];
 
 function emitChange() {
@@ -19,26 +20,33 @@ function subscribe(onStoreChange: () => void) {
 }
 
 function getSnapshot(): Theme {
-  return (localStorage.getItem("theme") as Theme) ?? "dark";
+  return currentTheme;
 }
 
 function getServerSnapshot(): Theme {
   return "dark";
 }
 
-function setTheme(theme: Theme) {
-  localStorage.setItem("theme", theme);
+export function setTheme(theme: Theme) {
+  currentTheme = theme;
+  document.cookie = `theme=${theme};path=/;max-age=31536000;SameSite=Lax`;
   document.documentElement.classList.toggle("light", theme === "light");
   emitChange();
 }
 
-export function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+export function useTheme() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
 
-  // Apply theme to DOM after hydration
+export function ThemeToggle() {
+  const theme = useTheme();
+
+  // Sync in-memory store with DOM on hydration
   useEffect(() => {
-    document.documentElement.classList.toggle("light", theme === "light");
-  }, [theme]);
+    const isLight = document.documentElement.classList.contains("light");
+    currentTheme = isLight ? "light" : "dark";
+    emitChange();
+  }, []);
 
   const toggle = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");

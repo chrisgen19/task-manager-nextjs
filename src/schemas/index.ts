@@ -47,6 +47,8 @@ export const reorderSubtasksSchema = z.object({
 
 export const userPreferencesSchema = z.object({
   showSubtasks: z.boolean().optional(),
+  theme: z.enum(["dark", "light"]).optional(),
+  accentColor: z.enum(["blue", "indigo", "purple", "teal", "orange", "rose"]).optional(),
 });
 
 export const updateUserSchema = z.object({

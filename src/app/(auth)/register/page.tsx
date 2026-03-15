@@ -92,7 +92,7 @@ export default function RegisterPage() {
           type="submit"
           disabled={isSubmitting}
           className="w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
-          style={{ background: "var(--status-todo)", color: "#fff" }}
+          style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
         >
           {isSubmitting ? "Creating account…" : "Create account"}
         </button>

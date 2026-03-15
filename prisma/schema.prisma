@@ -13,6 +13,8 @@ model User {
   name         String
   password     String
   showSubtasks Boolean     @default(true)
+  theme        String      @default("dark")
+  accentColor  String      @default("blue")
   workboards   Workboard[]
   tasks        Task[]
   createdAt    DateTime    @default(now())

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
-import { LogOut, Plus, Pencil, Trash2, X, Check, LayoutGrid } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { useRouter } from "next/navigation";
+import { Plus, Pencil, Trash2, X, Check, LayoutGrid, Settings } from "lucide-react";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS, type TaskFilters } from "@/types";
 import type { Task, Workboard } from "@/types";
 
@@ -69,6 +68,7 @@ export function Sidebar({
   onWorkboardCreate, onWorkboardUpdate, onWorkboardDelete,
   userName,
 }: SidebarProps) {
+  const router = useRouter();
   const [showWorkboardForm, setShowWorkboardForm] = useState(false);
   const [editingWorkboard, setEditingWorkboard] = useState<Workboard | null>(null);
   const [formState, setFormState] = useState<WorkboardFormState>({ name: "", key: "", description: "" });
@@ -180,9 +180,9 @@ export function Sidebar({
       >
         <div
           className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-          style={{ background: "var(--status-todo)" }}
+          style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M2 7l3 3 5-6" />
             <rect x="1" y="1" width="12" height="12" rx="2" />
           </svg>
@@ -244,7 +244,7 @@ export function Sidebar({
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                     className="flex-1 text-xs py-1.5 rounded font-medium"
-                    style={{ background: "var(--status-todo)", color: "#fff" }}
+                    style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
                   >
                     {isSubmitting ? "Saving…" : editingWorkboard ? "Update" : "Create"}
                   </button>
@@ -304,7 +304,7 @@ export function Sidebar({
                   >
                     <span
                       className="text-xs font-bold px-1 rounded shrink-0"
-                      style={{ background: "var(--status-todo)", color: "#fff", fontSize: "0.625rem" }}
+                      style={{ background: "var(--status-todo)", color: "var(--accent-contrast)", fontSize: "0.625rem" }}
                     >
                       {w.key}
                     </span>
@@ -410,38 +410,30 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-3 py-3 shrink-0 space-y-1" style={{ borderTop: "1px solid var(--border-primary)" }}>
-        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg" style={{ background: "var(--bg-tertiary)" }}>
+      {/* Footer — clickable user section */}
+      <div className="px-3 py-3 shrink-0" style={{ borderTop: "1px solid var(--border-primary)" }}>
+        <button
+          onClick={() => router.push("/settings")}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors"
+          style={{ background: "var(--bg-tertiary)" }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-hover)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)";
+          }}
+        >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-            style={{ background: "var(--status-in-progress)", color: "#fff" }}
+            style={{ background: "var(--status-in-progress)", color: "var(--accent-contrast)" }}
           >
             {userName.charAt(0).toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{userName}</p>
             <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{total} task{total !== 1 ? "s" : ""}</p>
           </div>
-        </div>
-        <ThemeToggle />
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors"
-          style={{ color: "var(--text-secondary)" }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background = "var(--bg-tertiary)";
-            el.style.color = "var(--text-primary)";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background = "transparent";
-            el.style.color = "var(--text-secondary)";
-          }}
-        >
-          <LogOut size={15} />
-          Sign out
+          <Settings size={14} style={{ color: "var(--text-tertiary)" }} />
         </button>
       </div>
 

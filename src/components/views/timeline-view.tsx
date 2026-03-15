@@ -219,7 +219,7 @@ export function TimelineView({ tasks, onNavigate }: TimelineViewProps) {
                       height: 28,
                       background: PRIORITY_COLORS[task.priority],
                       opacity: 0.85,
-                      color: "#fff",
+                      color: "var(--accent-contrast)",
                       whiteSpace: "nowrap",
                     }}
                     title={task.title}
