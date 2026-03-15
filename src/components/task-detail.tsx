@@ -430,7 +430,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
 
         {/* LEFT: Title + Description */}
         <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
-        <div className="flex flex-col gap-8 w-full py-8 px-8">
+        <div className="flex flex-col gap-8 w-full pt-8 pb-12 px-8">
 
           {/* Parent breadcrumb for subtasks */}
           {isSubtask && task.parentTaskNumber != null && (

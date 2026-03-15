@@ -266,6 +266,7 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
                           value={editText}
                           onChange={setEditText}
                           placeholder="Edit comment…"
+                          compact
                         />
                       </div>
                       <div className="flex gap-2">
@@ -330,22 +331,30 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
       </div>
 
       {/* Comment input */}
-      <div>
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ border: "1px solid var(--border-primary)" }}
+      >
+        <RichTextEditor
+          value={commentText}
+          onChange={setCommentText}
+          placeholder="Write a comment…"
+          compact
+        />
         <div
-          className="rounded-xl overflow-hidden mb-2"
-          style={{ border: "1px solid var(--border-primary)" }}
+          className="flex items-center justify-between px-3 py-2"
+          style={{
+            borderTop: "1px solid var(--border-primary)",
+            background: "color-mix(in srgb, var(--bg-tertiary) 30%, transparent)",
+          }}
         >
-          <RichTextEditor
-            value={commentText}
-            onChange={setCommentText}
-            placeholder="Write a comment…"
-          />
-        </div>
-        <div className="flex justify-end">
+          <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+            Rich text supported
+          </span>
           <button
             onClick={handleSubmitComment}
             disabled={!commentText.trim() || submitting}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: "var(--accent-primary)",
               color: "var(--accent-contrast)",
