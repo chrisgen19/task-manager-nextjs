@@ -30,6 +30,14 @@ function isImageType(type: string): boolean {
   return IMAGE_TYPES.includes(type as (typeof UPLOAD_ALLOWED_TYPES)[number]);
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // ── Slash command definitions ──────────────────────────────────
 
 interface SlashItem {
@@ -396,29 +404,43 @@ export function RichTextEditor({
 
   // ── File handling ──────────────────────────────────────────
 
+  const insertUploadResult = useCallback(
+    (result: { url: string; filename: string; contentType: string }, pos?: number) => {
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      if (isImageType(result.contentType)) {
+        if (pos !== undefined) {
+          editor.chain().focus().setTextSelection(pos).setImage({ src: result.url, alt: result.filename }).run();
+        } else {
+          editor.chain().focus().setImage({ src: result.url, alt: result.filename }).run();
+        }
+      } else {
+        const safeFilename = escapeHtml(result.filename);
+        const linkHtml = `<a href="${result.url}" target="_blank" rel="noopener noreferrer">\u{1F4CE} ${safeFilename}</a> `;
+        if (pos !== undefined) {
+          editor.chain().focus().setTextSelection(pos).insertContent(linkHtml).run();
+        } else {
+          editor.chain().focus().insertContent(linkHtml).run();
+        }
+      }
+    },
+    [],
+  );
+
   const handleFileUploadAndInsert = useCallback(
-    async (file: File) => {
+    async (file: File, pos?: number) => {
       const editor = editorRef.current;
       if (!editor) return;
 
       try {
         const result = await uploadFile(file);
-        if (isImageType(result.contentType)) {
-          editor.chain().focus().setImage({ src: result.url, alt: result.filename }).run();
-        } else {
-          editor
-            .chain()
-            .focus()
-            .insertContent(
-              `<a href="${result.url}" target="_blank" rel="noopener noreferrer">\u{1F4CE} ${result.filename}</a> `,
-            )
-            .run();
-        }
+        insertUploadResult(result, pos);
       } catch {
         // error is already in the hook state
       }
     },
-    [uploadFile],
+    [uploadFile, insertUploadResult],
   );
 
   const openImagePicker = useCallback(() => {
@@ -548,9 +570,12 @@ export function RichTextEditor({
             if (!files?.length) return false;
 
             event.preventDefault();
+            const coords = { left: event.clientX, top: event.clientY };
+            const dropPos = view.posAtCoords(coords)?.pos;
+
             for (const file of Array.from(files)) {
               if (UPLOAD_ALLOWED_TYPES.includes(file.type as (typeof UPLOAD_ALLOWED_TYPES)[number])) {
-                handleFileUploadAndInsert(file);
+                handleFileUploadAndInsert(file, dropPos);
               }
             }
             return true;

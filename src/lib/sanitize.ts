@@ -14,7 +14,14 @@ const ALLOWED_TAGS = new Set([
   "hr",
 ]);
 
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? "";
+const R2_PUBLIC_HOST = (() => {
+  try {
+    const url = process.env.R2_PUBLIC_URL;
+    return url ? new URL(url).hostname : "";
+  } catch {
+    return "";
+  }
+})();
 
 const ALLOWED_ATTRS: Record<string, string[]> = {
   a: ["href", "target", "rel"],
@@ -66,7 +73,14 @@ export function sanitizeHtmlServer(html: string): string {
 
       // Only allow R2 public domain for img src to prevent arbitrary image injection
       if (attrName === "src" && lowerTag === "img") {
-        if (R2_PUBLIC_URL && !attrValue.startsWith(R2_PUBLIC_URL)) continue;
+        if (R2_PUBLIC_HOST) {
+          try {
+            const srcHost = new URL(attrValue).hostname;
+            if (srcHost !== R2_PUBLIC_HOST) continue;
+          } catch {
+            continue; // malformed URL — strip it
+          }
+        }
       }
 
       safeAttrs.push(`${attrName}="${attrValue.replace(/"/g, "&quot;")}"`);

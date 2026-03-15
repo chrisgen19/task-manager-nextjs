@@ -146,6 +146,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
   const [titleValue, setTitleValue] = useState(task.title);
   const [editingDescription, setEditingDescription] = useState(false);
   const [descValue, setDescValue] = useState(task.description);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [editingDueDate, setEditingDueDate] = useState(false);
   const [dueDateValue, setDueDateValue] = useState(
     task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""
@@ -538,7 +539,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                     minHeight: "180px",
                   }}
                 >
-                  <RichTextEditor value={descValue} onChange={setDescValue} />
+                  <RichTextEditor value={descValue} onChange={setDescValue} onUploadingChange={setIsUploadingFile} />
                 </div>
                 <div
                   className="flex items-center gap-2 sticky bottom-0 py-3"
@@ -546,14 +547,15 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                 >
                   <button
                     onClick={handleDescriptionSave}
-                    className="px-5 py-2 rounded-lg text-xs font-semibold transition-all"
+                    disabled={isUploadingFile}
+                    className="px-5 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       background: statusColor,
                       color: "var(--accent-contrast)",
                       boxShadow: `0 2px 8px color-mix(in srgb, ${statusColor} 35%, transparent)`,
                     }}
                   >
-                    Save
+                    {isUploadingFile ? "Uploading…" : "Save"}
                   </button>
                   <button
                     onClick={() => { setDescValue(task.description); setEditingDescription(false); }}
