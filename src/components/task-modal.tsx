@@ -200,7 +200,7 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
                     name="description"
                     control={control}
                     render={({ field }) => (
-                      <RichTextEditor value={field.value ?? ""} onChange={field.onChange} />
+                      <RichTextEditor value={field.value ?? ""} onChange={field.onChange} fillHeight />
                     )}
                   />
                 </div>
