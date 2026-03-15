@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { taskSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
 import { detectChanges } from "@/lib/activity";
+import { deleteManyFromR2 } from "@/lib/r2";
+import { linkAttachmentsToTask, cleanupRemovedAttachments } from "@/lib/attachments";
 
 const taskInclude = {
   workboard: { select: { key: true, name: true } },
@@ -83,6 +85,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return updated;
     });
 
+    // Link new attachments and clean up removed ones
+    const savedDesc = sanitizeHtmlServer(description ?? "");
+    linkAttachmentsToTask(savedDesc, id, session.user.id).catch(() => {});
+    cleanupRemovedAttachments(savedDesc, id, null, session.user.id).catch(() => {});
+
     return NextResponse.json(task);
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -96,6 +103,17 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const existing = await getTaskOrFail(id, session.user.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Collect R2 keys before deleting (includes subtask attachments via cascade)
+  const attachments = await db.attachment.findMany({
+    where: {
+      OR: [
+        { taskId: id },
+        { task: { parentId: id } },
+      ],
+    },
+    select: { r2Key: true },
+  });
 
   if (existing.parentId) {
     await db.$transaction(async (tx) => {
@@ -111,6 +129,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     });
   } else {
     await db.task.delete({ where: { id } });
+  }
+
+  // Delete files from R2 after DB deletion succeeds
+  if (attachments.length > 0) {
+    deleteManyFromR2(attachments.map((a) => a.r2Key)).catch(() => {});
   }
 
   return NextResponse.json({ success: true });

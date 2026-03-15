@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { allocateSubtaskNumber } from "@/lib/subtask";
 import { taskSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
+import { linkAttachmentsToTask } from "@/lib/attachments";
 
 const taskInclude = {
   workboard: { select: { key: true, name: true } },
@@ -93,6 +94,11 @@ export async function POST(req: Request) {
         });
       });
 
+      const sanitizedDesc = sanitizeHtmlServer(description ?? "");
+      if (sanitizedDesc) {
+        linkAttachmentsToTask(sanitizedDesc, task.id, session.user.id).catch(() => {});
+      }
+
       return NextResponse.json(task, { status: 201 });
     }
 
@@ -117,6 +123,11 @@ export async function POST(req: Request) {
       },
       include: taskInclude,
     });
+
+    const sanitizedStandaloneDesc = sanitizeHtmlServer(description ?? "");
+    if (sanitizedStandaloneDesc) {
+      linkAttachmentsToTask(sanitizedStandaloneDesc, task.id, session.user.id).catch(() => {});
+    }
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {

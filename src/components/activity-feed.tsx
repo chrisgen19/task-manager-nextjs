@@ -82,6 +82,7 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -267,15 +268,17 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
                           onChange={setEditText}
                           placeholder="Edit comment…"
                           compact
+                          onUploadingChange={setIsUploadingFile}
                         />
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEditComment(comment.id)}
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors"
+                          disabled={isUploadingFile}
+                          className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
                         >
-                          <Check size={12} /> Save
+                          <Check size={12} /> {isUploadingFile ? "Uploading…" : "Save"}
                         </button>
                         <button
                           onClick={() => { setEditingId(null); setEditText(""); }}
@@ -337,6 +340,7 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
           onChange={setCommentText}
           placeholder="Write a comment…"
           compact
+          onUploadingChange={setIsUploadingFile}
         />
         <div className="flex items-center justify-end gap-2 mt-2">
           {commentText.trim() && (
@@ -353,7 +357,7 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
           )}
           <button
             onClick={handleSubmitComment}
-            disabled={!commentText.trim() || submitting}
+            disabled={!commentText.trim() || submitting || isUploadingFile}
             className="px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: "var(--accent)",

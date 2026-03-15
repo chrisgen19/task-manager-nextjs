@@ -8,14 +8,24 @@ const ALLOWED_TAGS = new Set([
   "p", "br", "div", "span",
   "ul", "ol", "li",
   "h1", "h2", "h3", "h4",
-  "a",
+  "a", "img",
   "code", "pre", "blockquote",
   "table", "thead", "tbody", "tr", "th", "td",
   "hr",
 ]);
 
+const R2_PUBLIC_HOST = (() => {
+  try {
+    const url = process.env.R2_PUBLIC_URL;
+    return url ? new URL(url).hostname : "";
+  } catch {
+    return "";
+  }
+})();
+
 const ALLOWED_ATTRS: Record<string, string[]> = {
   a: ["href", "target", "rel"],
+  img: ["src", "alt", "width", "height"],
   td: ["colspan", "rowspan"],
   th: ["colspan", "rowspan"],
 };
@@ -59,6 +69,18 @@ export function sanitizeHtmlServer(html: string): string {
       if (attrName === "href") {
         const clean = attrValue.trim().toLowerCase();
         if (clean.startsWith("javascript:") || clean.startsWith("data:")) continue;
+      }
+
+      // Only allow R2 public domain for img src to prevent arbitrary image injection
+      if (attrName === "src" && lowerTag === "img") {
+        if (R2_PUBLIC_HOST) {
+          try {
+            const srcHost = new URL(attrValue).hostname;
+            if (srcHost !== R2_PUBLIC_HOST) continue;
+          } catch {
+            continue; // malformed URL — strip it
+          }
+        }
       }
 
       safeAttrs.push(`${attrName}="${attrValue.replace(/"/g, "&quot;")}"`);

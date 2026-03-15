@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { commentSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
+import { deleteManyFromR2 } from "@/lib/r2";
+import { linkAttachmentsToComment, cleanupRemovedAttachments } from "@/lib/attachments";
 
 type Params = { params: Promise<{ id: string; commentId: string }> };
 
@@ -30,6 +32,10 @@ export async function PUT(req: Request, { params }: Params) {
       include: { user: { select: { name: true } } },
     });
 
+    // Link new attachments and clean up removed ones
+    linkAttachmentsToComment(updated.content, id, commentId, session.user.id).catch(() => {});
+    cleanupRemovedAttachments(updated.content, id, commentId, session.user.id).catch(() => {});
+
     return NextResponse.json(updated);
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -47,6 +53,18 @@ export async function DELETE(_req: Request, { params }: Params) {
   });
   if (!comment) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Collect R2 keys before deleting
+  const attachments = await db.attachment.findMany({
+    where: { commentId },
+    select: { r2Key: true },
+  });
+
   await db.comment.delete({ where: { id: commentId } });
+
+  // Delete files from R2 after DB deletion succeeds
+  if (attachments.length > 0) {
+    deleteManyFromR2(attachments.map((a) => a.r2Key)).catch(() => {});
+  }
+
   return NextResponse.json({ success: true });
 }

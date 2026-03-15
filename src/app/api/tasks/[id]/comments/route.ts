@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { commentSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
+import { linkAttachmentsToComment } from "@/lib/attachments";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -46,6 +47,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       },
       include: { user: { select: { name: true } } },
     });
+
+    // Link any unlinked attachments to this comment
+    linkAttachmentsToComment(comment.content, id, comment.id, session.user.id).catch(() => {});
 
     return NextResponse.json(comment, { status: 201 });
   } catch {

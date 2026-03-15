@@ -18,6 +18,7 @@ model User {
   workboards   Workboard[]
   tasks        Task[]
   comments     Comment[]     @relation("UserComments")
+  attachments  Attachment[]
   activityLogs ActivityLog[] @relation("UserActivity")
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -60,6 +61,7 @@ model Task {
   updatedAt      DateTime  @updatedAt
 
   comments       Comment[]
+  attachments    Attachment[]
   activityLogs   ActivityLog[]
 
   @@unique([workboardId, taskNumber])
@@ -67,16 +69,37 @@ model Task {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
-  taskId    String
-  userId    String
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user      User     @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String       @id @default(cuid())
+  content     String       @db.Text
+  taskId      String
+  userId      String
+  task        Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User         @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
+  attachments Attachment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([taskId, createdAt])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  r2Key       String
+  url         String
+  filename    String
+  contentType String
+  size        Int
+  taskId      String?
+  commentId   String?
+  userId      String
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment     Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([taskId])
+  @@index([commentId])
+  @@index([userId, taskId])
 }
 
 model ActivityLog {

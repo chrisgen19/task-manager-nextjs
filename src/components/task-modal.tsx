@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X, ExternalLink } from "lucide-react";
@@ -63,6 +63,9 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
     },
   });
 
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const isUploadingRef = useRef(false);
+  useEffect(() => { isUploadingRef.current = isUploadingFile; }, [isUploadingFile]);
   const watchedPriority = useWatch({ control, name: "priority" });
   const watchedStatus = useWatch({ control, name: "status" });
 
@@ -80,7 +83,7 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") onClose();
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleSubmit(onSave)();
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !isUploadingRef.current) handleSubmit(onSave)();
   }, [onClose, handleSubmit, onSave]);
 
   useEffect(() => {
@@ -200,7 +203,7 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
                     name="description"
                     control={control}
                     render={({ field }) => (
-                      <RichTextEditor value={field.value ?? ""} onChange={field.onChange} fillHeight />
+                      <RichTextEditor value={field.value ?? ""} onChange={field.onChange} fillHeight onUploadingChange={setIsUploadingFile} />
                     )}
                   />
                 </div>
@@ -328,11 +331,11 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploadingFile}
                 className="px-4 py-1.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
                 style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
               >
-                {isSubmitting ? "Creating…" : "Create task"}
+                {isUploadingFile ? "Uploading…" : isSubmitting ? "Creating…" : "Create task"}
               </button>
             </div>
           </div>
