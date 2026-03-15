@@ -375,8 +375,6 @@ interface RichTextEditorProps {
   compact?: boolean;
   enableUploads?: boolean;
   onUploadingChange?: (uploading: boolean) => void;
-  taskId?: string;
-  commentId?: string;
 }
 
 export function RichTextEditor({
@@ -387,16 +385,13 @@ export function RichTextEditor({
   compact = false,
   enableUploads = true,
   onUploadingChange,
-  taskId,
-  commentId,
 }: RichTextEditorProps) {
   const [slashState, setSlashState] = useState<SlashState | null>(null);
   const slashRef = useRef<SlashState | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<Editor | null>(null);
-  const uploadContext = taskId ? { taskId, commentId } : undefined;
-  const { uploadFile, isUploading } = useFileUpload(uploadContext);
+  const { uploadFile, isUploading } = useFileUpload();
 
   // Notify parent of uploading state
   useEffect(() => {

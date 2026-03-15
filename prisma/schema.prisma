@@ -89,16 +89,17 @@ model Attachment {
   filename    String
   contentType String
   size        Int
-  taskId      String
+  taskId      String?
   commentId   String?
   userId      String
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   comment     Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 
   @@index([taskId])
   @@index([commentId])
+  @@index([userId, taskId])
 }
 
 model ActivityLog {

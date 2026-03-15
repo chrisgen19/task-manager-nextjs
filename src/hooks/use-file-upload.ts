@@ -8,12 +8,7 @@ interface UploadResult {
   size: number;
 }
 
-interface UploadContext {
-  taskId?: string;
-  commentId?: string;
-}
-
-export function useFileUpload(context?: UploadContext) {
+export function useFileUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +31,6 @@ export function useFileUpload(context?: UploadContext) {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      if (context?.taskId) formData.append("taskId", context.taskId);
-      if (context?.commentId) formData.append("commentId", context.commentId);
 
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       if (!res.ok) {
@@ -53,7 +46,7 @@ export function useFileUpload(context?: UploadContext) {
     } finally {
       setIsUploading(false);
     }
-  }, [context?.taskId, context?.commentId]);
+  }, []);
 
   return { uploadFile, isUploading, error };
 }

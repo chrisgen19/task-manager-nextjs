@@ -269,8 +269,6 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
                           placeholder="Edit comment…"
                           compact
                           onUploadingChange={setIsUploadingFile}
-                          taskId={taskId}
-                          commentId={comment.id}
                         />
                       </div>
                       <div className="flex gap-2">
@@ -343,7 +341,6 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
           placeholder="Write a comment…"
           compact
           onUploadingChange={setIsUploadingFile}
-          taskId={taskId}
         />
         <div className="flex items-center justify-end gap-2 mt-2">
           {commentText.trim() && (

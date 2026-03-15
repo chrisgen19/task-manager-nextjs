@@ -20,8 +20,6 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const file = formData.get("file");
-  const taskId = formData.get("taskId") as string | null;
-  const commentId = formData.get("commentId") as string | null;
 
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -55,21 +53,17 @@ export async function POST(request: Request) {
   const key = generateFileKey(session.user.id, filename);
   const url = await uploadToR2(buffer, key, contentType);
 
-  // Record attachment in DB if linked to a task
-  if (taskId) {
-    await db.attachment.create({
-      data: {
-        r2Key: key,
-        url,
-        filename,
-        contentType,
-        size: buffer.length,
-        taskId,
-        commentId: commentId || null,
-        userId: session.user.id,
-      },
-    });
-  }
+  // Record unlinked attachment — taskId/commentId set by save routes
+  await db.attachment.create({
+    data: {
+      r2Key: key,
+      url,
+      filename,
+      contentType,
+      size: buffer.length,
+      userId: session.user.id,
+    },
+  });
 
   return NextResponse.json({
     url,

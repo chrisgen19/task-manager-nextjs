@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { commentSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
 import { deleteManyFromR2 } from "@/lib/r2";
+import { linkAttachmentsToComment, cleanupRemovedAttachments } from "@/lib/attachments";
 
 type Params = { params: Promise<{ id: string; commentId: string }> };
 
@@ -30,6 +31,10 @@ export async function PUT(req: Request, { params }: Params) {
       data: { content: sanitizeHtmlServer(parsed.data.content) },
       include: { user: { select: { name: true } } },
     });
+
+    // Link new attachments and clean up removed ones
+    linkAttachmentsToComment(updated.content, id, commentId, session.user.id).catch(() => {});
+    cleanupRemovedAttachments(updated.content, id, commentId, session.user.id).catch(() => {});
 
     return NextResponse.json(updated);
   } catch {

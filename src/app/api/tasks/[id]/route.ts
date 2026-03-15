@@ -5,6 +5,7 @@ import { taskSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
 import { detectChanges } from "@/lib/activity";
 import { deleteManyFromR2 } from "@/lib/r2";
+import { linkAttachmentsToTask, cleanupRemovedAttachments } from "@/lib/attachments";
 
 const taskInclude = {
   workboard: { select: { key: true, name: true } },
@@ -83,6 +84,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
       return updated;
     });
+
+    // Link new attachments and clean up removed ones
+    const savedDesc = sanitizeHtmlServer(description ?? "");
+    linkAttachmentsToTask(savedDesc, id, session.user.id).catch(() => {});
+    cleanupRemovedAttachments(savedDesc, id, null, session.user.id).catch(() => {});
 
     return NextResponse.json(task);
   } catch {
