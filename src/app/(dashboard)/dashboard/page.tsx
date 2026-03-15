@@ -23,7 +23,7 @@ export default async function DashboardPage() {
     }),
     db.user.findUniqueOrThrow({
       where: { id: session!.user.id },
-      select: { showSubtasks: true, accentColor: true },
+      select: { showSubtasks: true },
     }),
   ]);
 
@@ -66,7 +66,6 @@ export default async function DashboardPage() {
       initialTasks={tasks}
       initialWorkboards={workboards}
       initialShowSubtasks={user.showSubtasks}
-      initialAccentColor={user.accentColor}
       userName={session!.user.name ?? "User"}
     />
   );

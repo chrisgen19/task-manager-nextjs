@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Check, LayoutGrid, Settings } from "lucide-react";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS, type TaskFilters } from "@/types";
 import type { Task, Workboard } from "@/types";
-import { UserSettingsModal } from "@/components/user-settings-modal";
 
 interface SidebarProps {
   tasks: Task[];
@@ -15,10 +15,6 @@ interface SidebarProps {
   onWorkboardUpdate: (w: Workboard) => void;
   onWorkboardDelete: (id: string) => void;
   userName: string;
-  initialAccentColor: string;
-  showSubtasks: boolean;
-  onToggleSubtasks: () => void;
-  onUserNameChange: (name: string) => void;
 }
 
 function FilterBtn({
@@ -70,15 +66,14 @@ const STATUS_IN_PROGRESS = STATUSES.indexOf("In Progress");
 export function Sidebar({
   tasks, workboards, filters, onFiltersChange,
   onWorkboardCreate, onWorkboardUpdate, onWorkboardDelete,
-  userName, initialAccentColor,
-  showSubtasks, onToggleSubtasks, onUserNameChange,
+  userName,
 }: SidebarProps) {
+  const router = useRouter();
   const [showWorkboardForm, setShowWorkboardForm] = useState(false);
   const [editingWorkboard, setEditingWorkboard] = useState<Workboard | null>(null);
   const [formState, setFormState] = useState<WorkboardFormState>({ name: "", key: "", description: "" });
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
 
   const total = tasks.length;
   const overdue = tasks.filter(
@@ -418,7 +413,7 @@ export function Sidebar({
       {/* Footer — clickable user section */}
       <div className="px-3 py-3 shrink-0" style={{ borderTop: "1px solid var(--border-primary)" }}>
         <button
-          onClick={() => setShowSettings(true)}
+          onClick={() => router.push("/settings")}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors"
           style={{ background: "var(--bg-tertiary)" }}
           onMouseEnter={(e) => {
@@ -441,18 +436,6 @@ export function Sidebar({
           <Settings size={14} style={{ color: "var(--text-tertiary)" }} />
         </button>
       </div>
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <UserSettingsModal
-          userName={userName}
-          initialAccentColor={initialAccentColor}
-          showSubtasks={showSubtasks}
-          onToggleSubtasks={onToggleSubtasks}
-          onUserNameChange={onUserNameChange}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
 
       {/* Unused icon imports to avoid TS errors */}
       <span className="hidden"><Check size={0} /><X size={0} /></span>
