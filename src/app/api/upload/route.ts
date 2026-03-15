@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 import { auth } from "@/lib/auth";
 import { uploadToR2, generateFileKey } from "@/lib/r2";
 import { UPLOAD_MAX_SIZE, UPLOAD_ALLOWED_TYPES } from "@/schemas";
+
+const COMPRESSIBLE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -30,14 +38,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const key = generateFileKey(session.user.id, file.name);
-  const url = await uploadToR2(buffer, key, file.type);
+  let buffer = Buffer.from(await file.arrayBuffer());
+  let contentType = file.type;
+  let filename = file.name;
+
+  // Compress raster images to WebP
+  if (COMPRESSIBLE_TYPES.has(file.type)) {
+    buffer = Buffer.from(await sharp(buffer).webp({ quality: 80 }).toBuffer());
+    contentType = "image/webp";
+    filename = filename.replace(/\.[^.]+$/, ".webp");
+  }
+
+  const key = generateFileKey(session.user.id, filename);
+  const url = await uploadToR2(buffer, key, contentType);
 
   return NextResponse.json({
     url,
-    filename: file.name,
-    contentType: file.type,
-    size: file.size,
+    filename,
+    contentType,
+    size: buffer.length,
   });
 }
