@@ -67,3 +67,9 @@ export type ConvertTaskInput = z.output<typeof convertTaskSchema>;
 export type ReorderSubtasksInput = z.output<typeof reorderSubtasksSchema>;
 export type UserPreferencesInput = z.output<typeof userPreferencesSchema>;
 export type UpdateUserInput = z.input<typeof updateUserSchema>;
+
+export const commentSchema = z.object({
+  content: z.string().min(1, "Comment cannot be empty").max(10000, "Comment is too long"),
+});
+
+export type CommentInput = z.output<typeof commentSchema>;

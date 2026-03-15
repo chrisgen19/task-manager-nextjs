@@ -9,6 +9,7 @@ import {
   ArrowUpRight, Info, Tag, User, Briefcase, Link2, Clock,
 } from "lucide-react";
 import { RichTextEditor } from "./rich-text-editor";
+import { ActivityFeed } from "./activity-feed";
 import { formatTaskKey } from "@/lib/utils";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS } from "@/types";
 import type { Task } from "@/types";
@@ -158,6 +159,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
   const [isCreatingSubtask, setIsCreatingSubtask] = useState(false);
   const [showSubtasks, setShowSubtasks] = useState(true);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [activityRefresh, setActivityRefresh] = useState(0);
 
   const taskSlug = formatTaskKey(task);
   const isSubtask = !!task.parentId;
@@ -204,6 +206,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
         createdAt: new Date(raw.createdAt).toISOString(),
         updatedAt: new Date(raw.updatedAt).toISOString(),
       }));
+      setActivityRefresh((c) => c + 1);
     } catch {
       setSaveError("Network error");
     } finally {
@@ -739,28 +742,8 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
             </div>
           )}
 
-          {/* Activity placeholder */}
-          <div>
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>Activity</h3>
-            <div className="flex items-start gap-3">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                style={{ background: "var(--status-in-progress)", color: "var(--accent-contrast)" }}
-              >
-                {task.workboardName.charAt(0).toUpperCase()}
-              </div>
-              <div
-                className="flex-1 rounded-xl px-4 py-3 text-sm"
-                style={{
-                  background: "color-mix(in srgb, var(--bg-tertiary) 50%, transparent)",
-                  border: "1px solid var(--border-primary)",
-                  color: "var(--text-tertiary)",
-                }}
-              >
-                Activity &amp; comments coming soon…
-              </div>
-            </div>
-          </div>
+          {/* Activity & Comments */}
+          <ActivityFeed taskId={task.id} refreshTrigger={activityRefresh} />
         </div>
         </div>
 

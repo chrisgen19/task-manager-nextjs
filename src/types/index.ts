@@ -91,3 +91,40 @@ export const STATUS_LABELS: Record<number, string> = {
   3: "status-review",
   4: "status-done",
 };
+
+export type ActivityAction =
+  | "status_changed"
+  | "priority_changed"
+  | "title_changed"
+  | "description_changed"
+  | "due_date_changed"
+  | "jira_url_changed"
+  | "subtask_created"
+  | "subtask_deleted";
+
+export interface Comment {
+  id: string;
+  content: string;
+  taskId: string;
+  userId: string;
+  user: { name: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  taskId: string;
+  userId: string;
+  action: ActivityAction;
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  metadata: Record<string, unknown> | null;
+  user: { name: string };
+  createdAt: string;
+}
+
+export type FeedItem =
+  | { type: "comment"; data: Comment }
+  | { type: "activity"; data: ActivityLog };
