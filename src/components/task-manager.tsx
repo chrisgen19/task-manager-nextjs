@@ -18,6 +18,7 @@ interface TaskManagerProps {
   initialTasks: Task[];
   initialWorkboards: Workboard[];
   initialShowSubtasks: boolean;
+  initialAccentColor: string;
   userName: string;
 }
 
@@ -86,7 +87,7 @@ function normalizeTask(raw: Task & { workboard?: { key: string; name: string }; 
   };
 }
 
-export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtasks, userName }: TaskManagerProps) {
+export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtasks, initialAccentColor, userName }: TaskManagerProps) {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [workboards, setWorkboards] = useState<Workboard[]>(initialWorkboards);
@@ -97,6 +98,7 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showSubtasks, setShowSubtasks] = useState(initialShowSubtasks);
+  const [currentUserName, setCurrentUserName] = useState(userName);
 
   // Compute subtasksDone for parent tasks
   const tasksWithSubtasksDone = useMemo(() => {
@@ -297,7 +299,11 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
         onWorkboardCreate={handleWorkboardCreate}
         onWorkboardUpdate={handleWorkboardUpdate}
         onWorkboardDelete={handleWorkboardDelete}
-        userName={userName}
+        userName={currentUserName}
+        initialAccentColor={initialAccentColor}
+        showSubtasks={showSubtasks}
+        onToggleSubtasks={toggleShowSubtasks}
+        onUserNameChange={setCurrentUserName}
       />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">

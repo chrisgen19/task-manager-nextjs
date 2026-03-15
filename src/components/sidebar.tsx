@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
-import { LogOut, Plus, Pencil, Trash2, X, Check, LayoutGrid } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Plus, Pencil, Trash2, X, Check, LayoutGrid, Settings } from "lucide-react";
 import { PRIORITIES, STATUSES, PRIORITY_COLORS, STATUS_COLORS, type TaskFilters } from "@/types";
 import type { Task, Workboard } from "@/types";
+import { UserSettingsModal } from "@/components/user-settings-modal";
 
 interface SidebarProps {
   tasks: Task[];
@@ -16,6 +15,10 @@ interface SidebarProps {
   onWorkboardUpdate: (w: Workboard) => void;
   onWorkboardDelete: (id: string) => void;
   userName: string;
+  initialAccentColor: string;
+  showSubtasks: boolean;
+  onToggleSubtasks: () => void;
+  onUserNameChange: (name: string) => void;
 }
 
 function FilterBtn({
@@ -67,13 +70,15 @@ const STATUS_IN_PROGRESS = STATUSES.indexOf("In Progress");
 export function Sidebar({
   tasks, workboards, filters, onFiltersChange,
   onWorkboardCreate, onWorkboardUpdate, onWorkboardDelete,
-  userName,
+  userName, initialAccentColor,
+  showSubtasks, onToggleSubtasks, onUserNameChange,
 }: SidebarProps) {
   const [showWorkboardForm, setShowWorkboardForm] = useState(false);
   const [editingWorkboard, setEditingWorkboard] = useState<Workboard | null>(null);
   const [formState, setFormState] = useState<WorkboardFormState>({ name: "", key: "", description: "" });
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const total = tasks.length;
   const overdue = tasks.filter(
@@ -410,40 +415,44 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-3 py-3 shrink-0 space-y-1" style={{ borderTop: "1px solid var(--border-primary)" }}>
-        <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg" style={{ background: "var(--bg-tertiary)" }}>
+      {/* Footer — clickable user section */}
+      <div className="px-3 py-3 shrink-0" style={{ borderTop: "1px solid var(--border-primary)" }}>
+        <button
+          onClick={() => setShowSettings(true)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors"
+          style={{ background: "var(--bg-tertiary)" }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-hover)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)";
+          }}
+        >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
             style={{ background: "var(--status-in-progress)", color: "#fff" }}
           >
             {userName.charAt(0).toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{userName}</p>
             <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{total} task{total !== 1 ? "s" : ""}</p>
           </div>
-        </div>
-        <ThemeToggle />
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors"
-          style={{ color: "var(--text-secondary)" }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background = "var(--bg-tertiary)";
-            el.style.color = "var(--text-primary)";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background = "transparent";
-            el.style.color = "var(--text-secondary)";
-          }}
-        >
-          <LogOut size={15} />
-          Sign out
+          <Settings size={14} style={{ color: "var(--text-tertiary)" }} />
         </button>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <UserSettingsModal
+          userName={userName}
+          initialAccentColor={initialAccentColor}
+          showSubtasks={showSubtasks}
+          onToggleSubtasks={onToggleSubtasks}
+          onUserNameChange={onUserNameChange}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
 
       {/* Unused icon imports to avoid TS errors */}
       <span className="hidden"><Check size={0} /><X size={0} /></span>

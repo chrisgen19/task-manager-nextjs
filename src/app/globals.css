@@ -7,9 +7,20 @@
   --priority-high: #f97316;
   --priority-critical: #ef4444;
 
+  /* Accent color presets */
+  --accent-blue: #3b82f6;
+  --accent-indigo: #6366f1;
+  --accent-purple: #a855f7;
+  --accent-teal: #14b8a6;
+  --accent-orange: #f97316;
+  --accent-rose: #f43f5e;
+
+  /* Active accent (default blue, overridden by data-accent attribute) */
+  --accent: var(--accent-blue);
+
   /* Status */
   --status-backlog: #6b7280;
-  --status-todo: #3b82f6;
+  --status-todo: var(--accent);
   --status-in-progress: #6366f1;
   --status-review: #a855f7;
   --status-done: #22c55e;
@@ -63,6 +74,14 @@ html.light {
   --scrollbar-thumb: #cbd5e1;
   --scrollbar-track: #f1f5f9;
 }
+
+/* Accent color overrides via data attribute */
+html[data-accent="blue"]   { --accent: var(--accent-blue); }
+html[data-accent="indigo"] { --accent: var(--accent-indigo); }
+html[data-accent="purple"] { --accent: var(--accent-purple); }
+html[data-accent="teal"]   { --accent: var(--accent-teal); }
+html[data-accent="orange"] { --accent: var(--accent-orange); }
+html[data-accent="rose"]   { --accent: var(--accent-rose); }
 
 @theme inline {
   --color-bg-primary: var(--bg-primary);

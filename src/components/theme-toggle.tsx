@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
-type Theme = "dark" | "light";
+export type Theme = "dark" | "light";
 
 let listeners: Array<() => void> = [];
 
@@ -26,14 +26,18 @@ function getServerSnapshot(): Theme {
   return "dark";
 }
 
-function setTheme(theme: Theme) {
+export function setTheme(theme: Theme) {
   localStorage.setItem("theme", theme);
   document.documentElement.classList.toggle("light", theme === "light");
   emitChange();
 }
 
+export function useTheme() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
 export function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const theme = useTheme();
 
   // Apply theme to DOM after hydration
   useEffect(() => {
