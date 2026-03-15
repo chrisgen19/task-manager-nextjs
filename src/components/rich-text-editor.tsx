@@ -440,11 +440,11 @@ export function RichTextEditor({
 
   return (
     <div
-      className="tiptap-editor flex flex-col overflow-hidden rounded-lg"
+      className="tiptap-editor flex flex-col overflow-hidden rounded-lg h-full"
       style={{ border: "1px solid var(--border-primary)", background: "var(--bg-primary)" }}
     >
       <Toolbar editor={editor} />
-      <div className="overflow-y-auto" style={{ minHeight: "140px", maxHeight: "480px" }}>
+      <div className="flex-1 overflow-y-auto" style={{ minHeight: "140px" }}>
         <EditorContent editor={editor} />
       </div>
       {slashState && slashState.items.length > 0 && (
