@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import {
@@ -71,14 +71,6 @@ export function SettingsPage({
     type: "success" | "error";
     text: string;
   } | null>(null);
-
-  // Sync accent from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("accentColor") as AccentColor | null;
-    if (stored && ACCENT_COLORS.some((c) => c.name === stored)) {
-      setAccentColorState(stored);
-    }
-  }, []);
 
   function handleThemeChange(newTheme: Theme) {
     setTheme(newTheme);

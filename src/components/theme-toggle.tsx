@@ -5,6 +5,7 @@ import { Moon, Sun } from "lucide-react";
 
 export type Theme = "dark" | "light";
 
+let currentTheme: Theme = "dark";
 let listeners: Array<() => void> = [];
 
 function emitChange() {
@@ -19,7 +20,7 @@ function subscribe(onStoreChange: () => void) {
 }
 
 function getSnapshot(): Theme {
-  return (localStorage.getItem("theme") as Theme) ?? "dark";
+  return currentTheme;
 }
 
 function getServerSnapshot(): Theme {
@@ -27,7 +28,7 @@ function getServerSnapshot(): Theme {
 }
 
 export function setTheme(theme: Theme) {
-  localStorage.setItem("theme", theme);
+  currentTheme = theme;
   document.cookie = `theme=${theme};path=/;max-age=31536000;SameSite=Lax`;
   document.documentElement.classList.toggle("light", theme === "light");
   emitChange();
@@ -40,10 +41,12 @@ export function useTheme() {
 export function ThemeToggle() {
   const theme = useTheme();
 
-  // Apply theme to DOM after hydration
+  // Sync in-memory store with DOM on hydration
   useEffect(() => {
-    document.documentElement.classList.toggle("light", theme === "light");
-  }, [theme]);
+    const isLight = document.documentElement.classList.contains("light");
+    currentTheme = isLight ? "light" : "dark";
+    emitChange();
+  }, []);
 
   const toggle = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
