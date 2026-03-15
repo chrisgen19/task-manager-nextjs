@@ -545,7 +545,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                     className="px-5 py-2 rounded-lg text-xs font-semibold transition-all"
                     style={{
                       background: statusColor,
-                      color: "#fff",
+                      color: "var(--accent-contrast)",
                       boxShadow: `0 2px 8px color-mix(in srgb, ${statusColor} 35%, transparent)`,
                     }}
                   >
@@ -745,7 +745,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
             <div className="flex items-start gap-3">
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                style={{ background: "var(--status-in-progress)", color: "#fff" }}
+                style={{ background: "var(--status-in-progress)", color: "var(--accent-contrast)" }}
               >
                 {task.workboardName.charAt(0).toUpperCase()}
               </div>
@@ -853,7 +853,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                 >
                   <span
                     className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                    style={{ background: "var(--status-todo)", color: "#fff" }}
+                    style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
                   >
                     {task.workboardKey}
                   </span>
@@ -869,7 +869,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                 <div className="flex items-center gap-2">
                   <div
                     className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                    style={{ background: "var(--status-in-progress)", color: "#fff" }}
+                    style={{ background: "var(--status-in-progress)", color: "var(--accent-contrast)" }}
                   >
                     {task.workboardName.charAt(0).toUpperCase()}
                   </div>
@@ -885,7 +885,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
                 <div className="flex items-center gap-2">
                   <div
                     className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                    style={{ background: "var(--status-in-progress)", color: "#fff" }}
+                    style={{ background: "var(--status-in-progress)", color: "var(--accent-contrast)" }}
                   >
                     {task.workboardName.charAt(0).toUpperCase()}
                   </div>

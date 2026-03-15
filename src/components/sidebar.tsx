@@ -180,9 +180,9 @@ export function Sidebar({
       >
         <div
           className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-          style={{ background: "var(--status-todo)" }}
+          style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M2 7l3 3 5-6" />
             <rect x="1" y="1" width="12" height="12" rx="2" />
           </svg>
@@ -244,7 +244,7 @@ export function Sidebar({
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                     className="flex-1 text-xs py-1.5 rounded font-medium"
-                    style={{ background: "var(--status-todo)", color: "#fff" }}
+                    style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
                   >
                     {isSubmitting ? "Saving…" : editingWorkboard ? "Update" : "Create"}
                   </button>
@@ -304,7 +304,7 @@ export function Sidebar({
                   >
                     <span
                       className="text-xs font-bold px-1 rounded shrink-0"
-                      style={{ background: "var(--status-todo)", color: "#fff", fontSize: "0.625rem" }}
+                      style={{ background: "var(--status-todo)", color: "var(--accent-contrast)", fontSize: "0.625rem" }}
                     >
                       {w.key}
                     </span>
@@ -425,7 +425,7 @@ export function Sidebar({
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-            style={{ background: "var(--status-in-progress)", color: "#fff" }}
+            style={{ background: "var(--status-in-progress)", color: "var(--accent-contrast)" }}
           >
             {userName.charAt(0).toUpperCase()}
           </div>

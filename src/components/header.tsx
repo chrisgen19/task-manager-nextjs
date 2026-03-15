@@ -134,7 +134,7 @@ export function Header({
           <button
             onClick={onNewTask}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
-            style={{ background: "var(--status-todo)", color: "#fff" }}
+            style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
           >
             <Plus size={15} />
             New Task

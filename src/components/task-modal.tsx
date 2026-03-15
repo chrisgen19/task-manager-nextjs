@@ -329,7 +329,7 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
                 type="submit"
                 disabled={isSubmitting}
                 className="px-4 py-1.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
-                style={{ background: "var(--status-todo)", color: "#fff" }}
+                style={{ background: "var(--status-todo)", color: "var(--accent-contrast)" }}
               >
                 {isSubmitting ? "Creating…" : "Create task"}
               </button>

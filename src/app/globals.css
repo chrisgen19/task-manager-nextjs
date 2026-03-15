@@ -1,29 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  /* Priority */
+  /* Priority — dark theme (bright on dark backgrounds) */
   --priority-low: #22c55e;
   --priority-medium: #eab308;
   --priority-high: #f97316;
-  --priority-critical: #ef4444;
+  --priority-critical: #f87171;
 
-  /* Accent color presets */
-  --accent-blue: #3b82f6;
-  --accent-indigo: #6366f1;
-  --accent-purple: #a855f7;
-  --accent-teal: #14b8a6;
-  --accent-orange: #f97316;
-  --accent-rose: #f43f5e;
+  /* Accent color presets — dark theme (400-level, bright for text on dark bg) */
+  --accent-blue: #60a5fa;
+  --accent-indigo: #818cf8;
+  --accent-purple: #c084fc;
+  --accent-teal: #2dd4bf;
+  --accent-orange: #fb923c;
+  --accent-rose: #fb7185;
 
   /* Active accent (default blue, overridden by data-accent attribute) */
   --accent: var(--accent-blue);
 
-  /* Status */
-  --status-backlog: #6b7280;
+  /* Contrast text for solid accent backgrounds (avatars, badges, buttons) */
+  --accent-contrast: #0f172a;
+
+  /* Status — dark theme (bright for text on dark bg) */
+  --status-backlog: #9ca3af;
   --status-todo: var(--accent);
-  --status-in-progress: #6366f1;
-  --status-review: #a855f7;
+  --status-in-progress: #818cf8;
+  --status-review: #c084fc;
   --status-done: #22c55e;
+
+  /* Inline code foreground */
+  --code-fg: #fdba74;
 
   /* Dark theme (default) */
   --bg-primary: #0f172a;
@@ -34,7 +40,7 @@
 
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
+  --text-tertiary: #8896ab;
   --text-inverse: #0f172a;
 
   --border-primary: #334155;
@@ -53,6 +59,32 @@
 
 /* Light theme */
 html.light {
+  /* Priority — light theme (darker for text on white) */
+  --priority-low: #15803d;
+  --priority-medium: #a16207;
+  --priority-high: #c2410c;
+  --priority-critical: #dc2626;
+
+  /* Accent colors — light theme (600/700-level, darker for text on white) */
+  --accent-blue: #2563eb;
+  --accent-indigo: #4f46e5;
+  --accent-purple: #7c3aed;
+  --accent-teal: #0f766e;
+  --accent-orange: #c2410c;
+  --accent-rose: #be123c;
+
+  /* White text on dark accent backgrounds */
+  --accent-contrast: #ffffff;
+
+  /* Status — light theme (darker for text on white) */
+  --status-backlog: #4b5563;
+  --status-in-progress: #4f46e5;
+  --status-review: #7c3aed;
+  --status-done: #15803d;
+
+  /* Inline code foreground */
+  --code-fg: #9a3412;
+
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-tertiary: #e2e8f0;
@@ -61,7 +93,7 @@ html.light {
 
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-tertiary: #94a3b8;
+  --text-tertiary: #536378;
   --text-inverse: #f1f5f9;
 
   --border-primary: #e2e8f0;
@@ -221,7 +253,7 @@ html, body {
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 0.8125rem;
   background: var(--bg-tertiary);
-  color: var(--priority-high);
+  color: var(--code-fg);
   padding: 0.1em 0.4em;
   border-radius: 4px;
   border: 1px solid var(--border-primary);
