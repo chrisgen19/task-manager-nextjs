@@ -69,7 +69,7 @@ function Avatar({ name }: { name: string }) {
   return (
     <div
       className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-      style={{ background: "var(--accent-primary)", color: "var(--accent-contrast)" }}
+      style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
     >
       {name.charAt(0).toUpperCase()}
     </div>
@@ -167,11 +167,11 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
             style={{
               background: filter === key
-                ? "color-mix(in srgb, var(--accent-primary) 15%, transparent)"
+                ? "color-mix(in srgb, var(--accent) 15%, transparent)"
                 : "transparent",
-              color: filter === key ? "var(--accent-primary)" : "var(--text-tertiary)",
+              color: filter === key ? "var(--accent)" : "var(--text-tertiary)",
               border: filter === key
-                ? "1px solid color-mix(in srgb, var(--accent-primary) 30%, transparent)"
+                ? "1px solid color-mix(in srgb, var(--accent) 30%, transparent)"
                 : "1px solid transparent",
             }}
           >
@@ -273,7 +273,7 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
                         <button
                           onClick={() => handleEditComment(comment.id)}
                           className="flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium transition-colors"
-                          style={{ background: "var(--accent-primary)", color: "var(--accent-contrast)" }}
+                          style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
                         >
                           <Check size={12} /> Save
                         </button>
@@ -331,37 +331,36 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
       </div>
 
       {/* Comment input */}
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{ border: "1px solid var(--border-primary)" }}
-      >
+      <div>
         <RichTextEditor
           value={commentText}
           onChange={setCommentText}
           placeholder="Write a comment…"
           compact
         />
-        <div
-          className="flex items-center justify-between px-3 py-2"
-          style={{
-            borderTop: "1px solid var(--border-primary)",
-            background: "color-mix(in srgb, var(--bg-tertiary) 30%, transparent)",
-          }}
-        >
-          <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-            Rich text supported
-          </span>
+        <div className="flex items-center justify-end gap-2 mt-2">
+          {commentText.trim() && (
+            <button
+              onClick={() => setCommentText("")}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                color: "var(--text-secondary)",
+                border: "1px solid var(--border-primary)",
+              }}
+            >
+              Cancel
+            </button>
+          )}
           <button
             onClick={handleSubmitComment}
             disabled={!commentText.trim() || submitting}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: "var(--accent-primary)",
+              background: "var(--accent)",
               color: "var(--accent-contrast)",
             }}
           >
-            <MessageSquare size={12} />
-            {submitting ? "Posting…" : "Comment"}
+            {submitting ? "Saving…" : "Save"}
           </button>
         </div>
       </div>
