@@ -27,8 +27,10 @@ function formatDate(date: Date | string | null): string {
       return `${months[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
     }
   }
+  // Use UTC methods to avoid timezone shifts for Date objects
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
 }
 
 export function detectChanges(
