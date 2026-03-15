@@ -56,6 +56,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
     });
 
+    await db.activityLog.create({
+      data: {
+        taskId: parentId,
+        userId: session.user.id,
+        action: "subtask_created",
+        metadata: { subtaskTitle: parsed.data.title },
+      },
+    });
+
     return NextResponse.json(subtask, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

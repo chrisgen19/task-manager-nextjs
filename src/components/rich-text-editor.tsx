@@ -306,6 +306,7 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   fillHeight?: boolean;
+  compact?: boolean;
 }
 
 export function RichTextEditor({
@@ -313,6 +314,7 @@ export function RichTextEditor({
   onChange,
   placeholder = "Type '/' for commands, or start writing…",
   fillHeight = false,
+  compact = false,
 }: RichTextEditorProps) {
   const [slashState, setSlashState] = useState<SlashState | null>(null);
   const slashRef = useRef<SlashState | null>(null);
@@ -419,7 +421,7 @@ export function RichTextEditor({
     content: value || "",
     editorProps: {
       attributes: {
-        class: "rich-content tiptap-body outline-none",
+        class: `rich-content tiptap-body outline-none${compact ? " tiptap-body-compact" : ""}`,
       },
     },
     onUpdate: ({ editor }) => {
@@ -446,7 +448,7 @@ export function RichTextEditor({
       style={{ border: "1px solid var(--border-primary)", background: "var(--bg-primary)" }}
     >
       <Toolbar editor={editor} />
-      <div className={`overflow-y-auto${fillHeight ? " flex-1" : ""}`} style={{ minHeight: "140px", ...(!fillHeight && { maxHeight: "480px" }) }}>
+      <div className={`overflow-y-auto${fillHeight ? " flex-1" : ""}`} style={{ minHeight: compact ? "60px" : "140px", ...(!fillHeight && { maxHeight: compact ? "200px" : "480px" }) }}>
         <EditorContent editor={editor} />
       </div>
       {slashState && slashState.items.length > 0 && (

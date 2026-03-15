@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { taskSchema } from "@/schemas";
 import { sanitizeHtmlServer } from "@/lib/sanitize";
+import { detectChanges } from "@/lib/activity";
 
 const taskInclude = {
   workboard: { select: { key: true, name: true } },
@@ -43,17 +44,43 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const { title, description, jiraUrl, priority, status, dueDate } = parsed.data;
 
-    const task = await db.task.update({
-      where: { id },
-      data: {
-        title,
-        description: sanitizeHtmlServer(description ?? ""),
-        jiraUrl: jiraUrl ?? "",
-        priority,
-        status,
-        dueDate: dueDate ? new Date(dueDate) : null,
-      },
-      include: taskInclude,
+    const changes = detectChanges(existing, {
+      status,
+      priority,
+      title,
+      description: sanitizeHtmlServer(description ?? ""),
+      dueDate: dueDate ? new Date(dueDate) : null,
+      jiraUrl: jiraUrl ?? "",
+    });
+
+    const task = await db.$transaction(async (tx) => {
+      const updated = await tx.task.update({
+        where: { id },
+        data: {
+          title,
+          description: sanitizeHtmlServer(description ?? ""),
+          jiraUrl: jiraUrl ?? "",
+          priority,
+          status,
+          dueDate: dueDate ? new Date(dueDate) : null,
+        },
+        include: taskInclude,
+      });
+
+      if (changes.length > 0) {
+        await tx.activityLog.createMany({
+          data: changes.map((c) => ({
+            taskId: id,
+            userId: session.user.id,
+            action: c.action,
+            field: c.field,
+            oldValue: c.oldValue,
+            newValue: c.newValue,
+          })),
+        });
+      }
+
+      return updated;
     });
 
     return NextResponse.json(task);
@@ -70,6 +97,21 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const existing = await getTaskOrFail(id, session.user.id);
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await db.task.delete({ where: { id } });
+  if (existing.parentId) {
+    await db.$transaction(async (tx) => {
+      await tx.activityLog.create({
+        data: {
+          taskId: existing.parentId!,
+          userId: session.user.id,
+          action: "subtask_deleted",
+          metadata: { subtaskTitle: existing.title },
+        },
+      });
+      await tx.task.delete({ where: { id } });
+    });
+  } else {
+    await db.task.delete({ where: { id } });
+  }
+
   return NextResponse.json({ success: true });
 }

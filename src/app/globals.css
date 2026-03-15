@@ -345,6 +345,10 @@ html, body {
   cursor: text;
 }
 
+.tiptap-body.tiptap-body-compact {
+  min-height: 60px;
+}
+
 /* Placeholder */
 .tiptap-body p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);

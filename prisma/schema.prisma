@@ -8,17 +8,19 @@ datasource db {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
+  id           String        @id @default(cuid())
+  email        String        @unique
   name         String
   password     String
-  showSubtasks Boolean     @default(true)
-  theme        String      @default("dark")
-  accentColor  String      @default("blue")
+  showSubtasks Boolean       @default(true)
+  theme        String        @default("dark")
+  accentColor  String        @default("blue")
   workboards   Workboard[]
   tasks        Task[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  comments     Comment[]     @relation("UserComments")
+  activityLogs ActivityLog[] @relation("UserActivity")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Workboard {
@@ -57,6 +59,38 @@ model Task {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  comments       Comment[]
+  activityLogs   ActivityLog[]
+
   @@unique([workboardId, taskNumber])
   @@unique([parentId, subtaskNumber])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  taskId    String
+  userId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId, createdAt])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  action    String
+  field     String?
+  oldValue  String?
+  newValue  String?
+  metadata  Json?
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserActivity", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
 }
