@@ -52,6 +52,8 @@ export function SettingsPage({
   // Profile
   const [name, setName] = useState(userName);
   const [email, setEmail] = useState(userEmail);
+  const [savedName, setSavedName] = useState(userName);
+  const [savedEmail, setSavedEmail] = useState(userEmail);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMessage, setProfileMessage] = useState<{
     type: "success" | "error";
@@ -114,8 +116,8 @@ export function SettingsPage({
     setProfileMessage(null);
 
     const body: Record<string, string> = {};
-    if (name.trim() && name.trim() !== userName) body.name = name.trim();
-    if (email.trim() && email.trim() !== userEmail) body.email = email.trim();
+    if (name.trim() && name.trim() !== savedName) body.name = name.trim();
+    if (email.trim() && email.trim() !== savedEmail) body.email = email.trim();
 
     if (Object.keys(body).length === 0) {
       setProfileLoading(false);
@@ -134,6 +136,8 @@ export function SettingsPage({
         setProfileMessage({ type: "error", text: data.error ?? "Failed to save" });
         return;
       }
+      if (body.name) setSavedName(body.name);
+      if (body.email) setSavedEmail(body.email);
       setProfileMessage({ type: "success", text: "Profile updated" });
     } catch {
       setProfileMessage({ type: "error", text: "Network error" });
