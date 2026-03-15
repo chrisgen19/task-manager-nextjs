@@ -28,6 +28,7 @@ function getServerSnapshot(): Theme {
 
 export function setTheme(theme: Theme) {
   localStorage.setItem("theme", theme);
+  document.cookie = `theme=${theme};path=/;max-age=31536000;SameSite=Lax`;
   document.documentElement.classList.toggle("light", theme === "light");
   emitChange();
 }

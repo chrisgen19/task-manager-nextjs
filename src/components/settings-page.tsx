@@ -14,6 +14,7 @@ import {
   Settings,
 } from "lucide-react";
 import { setTheme, useTheme, type Theme } from "@/components/theme-toggle";
+import { setAccentColor } from "@/components/theme-sync";
 
 const ACCENT_COLORS = [
   { name: "blue", value: "#3b82f6", label: "Blue" },
@@ -90,8 +91,7 @@ export function SettingsPage({
 
   function handleAccentChange(color: AccentColor) {
     setAccentColorState(color);
-    localStorage.setItem("accentColor", color);
-    document.documentElement.setAttribute("data-accent", color);
+    setAccentColor(color);
     fetch("/api/users/me/preferences", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -246,10 +246,10 @@ export function SettingsPage({
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
               style={{ background: "var(--status-in-progress)", color: "var(--accent-contrast)" }}
             >
-              {userName.charAt(0).toUpperCase()}
+              {(name || userName).charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{userName}</p>
+              <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>{name || userName}</p>
             </div>
           </div>
           <button
