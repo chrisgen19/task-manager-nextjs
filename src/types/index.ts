@@ -34,6 +34,9 @@ export interface Task {
   subtasks?: Task[];
   subtaskCount: number;
   subtasksDone: number;
+  jiraIssueId: string | null;
+  jiraIssueKey: string | null;
+  jiraSyncedAt: string | null;
   userId: string;
   createdAt: string;
   updatedAt: string;
@@ -128,3 +131,11 @@ export interface ActivityLog {
 export type FeedItem =
   | { type: "comment"; data: Comment }
   | { type: "activity"; data: ActivityLog };
+
+// ── Jira types ────────────────────────────────────────────────
+
+export interface JiraConnectionInfo {
+  id: string;
+  cloudName: string;
+  connectedAt: string;
+}

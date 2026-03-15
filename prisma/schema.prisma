@@ -8,20 +8,21 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String
-  password     String
-  showSubtasks Boolean       @default(true)
-  theme        String        @default("dark")
-  accentColor  String        @default("blue")
-  workboards   Workboard[]
-  tasks        Task[]
-  comments     Comment[]     @relation("UserComments")
-  attachments  Attachment[]
-  activityLogs ActivityLog[] @relation("UserActivity")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String
+  password       String
+  showSubtasks   Boolean         @default(true)
+  theme          String          @default("dark")
+  accentColor    String          @default("blue")
+  workboards     Workboard[]
+  tasks          Task[]
+  comments       Comment[]       @relation("UserComments")
+  attachments    Attachment[]
+  activityLogs   ActivityLog[]   @relation("UserActivity")
+  jiraConnection JiraConnection?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model Workboard {
@@ -57,6 +58,9 @@ model Task {
   workboard      Workboard @relation(fields: [workboardId], references: [id], onDelete: Cascade)
   parent         Task?     @relation("Subtasks", fields: [parentId], references: [id], onDelete: Cascade)
   subtasks       Task[]    @relation("Subtasks")
+  jiraIssueId    String?
+  jiraIssueKey   String?
+  jiraSyncedAt   DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -66,6 +70,7 @@ model Task {
 
   @@unique([workboardId, taskNumber])
   @@unique([parentId, subtaskNumber])
+  @@unique([userId, jiraIssueId])
 }
 
 model Comment {
@@ -80,6 +85,19 @@ model Comment {
   updatedAt   DateTime     @updatedAt
 
   @@index([taskId, createdAt])
+}
+
+model JiraConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  cloudId      String
+  cloudName    String
+  connectedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Attachment {

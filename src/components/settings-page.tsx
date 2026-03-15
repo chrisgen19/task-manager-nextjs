@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   ArrowLeft,
@@ -12,9 +13,15 @@ import {
   EyeOff,
   LogOut,
   Settings,
+  Unplug,
+  Import,
+  Loader2,
 } from "lucide-react";
 import { setTheme, useTheme, type Theme } from "@/components/theme-toggle";
 import { setAccentColor } from "@/components/theme-sync";
+import { JiraSyncModal } from "@/components/jira-sync-modal";
+import { useJiraSync } from "@/hooks/use-jira-sync";
+import type { JiraConnectionInfo } from "@/types";
 
 const ACCENT_COLORS = [
   { name: "blue", value: "#3b82f6", label: "Blue" },
@@ -32,6 +39,8 @@ interface SettingsPageProps {
   userEmail: string;
   showSubtasks: boolean;
   accentColor: string;
+  jiraConnection: JiraConnectionInfo | null;
+  workboards: Array<{ id: string; name: string; key: string }>;
 }
 
 export function SettingsPage({
@@ -39,8 +48,11 @@ export function SettingsPage({
   userEmail,
   showSubtasks: initialShowSubtasks,
   accentColor: initialAccentColor,
+  jiraConnection: initialJiraConnection,
+  workboards,
 }: SettingsPageProps) {
   const theme = useTheme();
+  const searchParams = useSearchParams();
 
   // Appearance
   const [accentColor, setAccentColorState] = useState<AccentColor>(
@@ -60,6 +72,28 @@ export function SettingsPage({
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  // Jira
+  const [jiraConnection, setJiraConnection] = useState<JiraConnectionInfo | null>(initialJiraConnection);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [jiraMessage, setJiraMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const syncHook = useJiraSync();
+
+  // Show toast on jira=connected query param
+  useEffect(() => {
+    const jiraParam = searchParams.get("jira");
+    if (jiraParam === "connected") {
+      setJiraMessage({ type: "success", text: "Jira connected successfully" });
+      // Clean URL
+      window.history.replaceState({}, "", "/settings");
+    } else if (jiraParam === "error") {
+      setJiraMessage({ type: "error", text: "Failed to connect Jira" });
+      window.history.replaceState({}, "", "/settings");
+    }
+  }, [searchParams]);
 
   // Security
   const [currentPassword, setCurrentPassword] = useState("");
@@ -101,6 +135,22 @@ export function SettingsPage({
     }).catch(() => {
       setShowSubtasks(!next);
     });
+  }
+
+  async function handleJiraDisconnect() {
+    if (!window.confirm("Disconnect Jira? Your synced tasks will remain as local tasks.")) return;
+    setDisconnecting(true);
+    setJiraMessage(null);
+    try {
+      const res = await fetch("/api/jira", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to disconnect");
+      setJiraConnection(null);
+      setJiraMessage({ type: "success", text: "Jira disconnected" });
+    } catch {
+      setJiraMessage({ type: "error", text: "Failed to disconnect Jira" });
+    } finally {
+      setDisconnecting(false);
+    }
   }
 
   async function handleProfileSave() {
@@ -433,6 +483,104 @@ export function SettingsPage({
                 </div>
               </div>
 
+              {/* ─── Jira Integration ─── */}
+              <div
+                className="rounded-xl p-5"
+                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)" }}
+              >
+                <h2 className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                  Jira Integration
+                </h2>
+                <p className="text-xs mb-4" style={{ color: "var(--text-tertiary)" }}>
+                  Connect your Jira account to import issues.
+                </p>
+
+                {jiraConnection ? (
+                  <div className="space-y-3">
+                    <div
+                      className="flex items-center justify-between px-3.5 py-3 rounded-lg"
+                      style={{ background: "var(--bg-tertiary)" }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h1.78v1.7c0 2.4 1.94 4.34 4.34 4.35V2.84A.84.84 0 0 0 21.16 2H11.53zM6.77 6.8a4.36 4.36 0 0 0 4.34 4.34h1.8v1.72a4.36 4.36 0 0 0 4.34 4.34V7.63a.84.84 0 0 0-.83-.83H6.77zM2 11.6c0 2.4 1.95 4.34 4.35 4.35h1.78v1.72c0 2.4 1.95 4.34 4.35 4.34V12.44a.84.84 0 0 0-.84-.84H2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                            {jiraConnection.cloudName}
+                          </p>
+                          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                            Connected {new Date(jiraConnection.connectedAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={syncHook.openModal}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+                        style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
+                      >
+                        <Import size={14} />
+                        Import Issues
+                      </button>
+                      <button
+                        onClick={handleJiraDisconnect}
+                        disabled={disconnecting}
+                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                        style={{
+                          background: "var(--bg-tertiary)",
+                          color: "var(--text-secondary)",
+                          border: "1px solid var(--border-primary)",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.color = "var(--priority-critical)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--priority-critical)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-primary)";
+                        }}
+                      >
+                        {disconnecting ? <Loader2 size={14} className="animate-spin" /> : <Unplug size={14} />}
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-html-link-for-pages
+                  <a
+                    href="/api/auth/jira"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity"
+                    style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M11.53 2c0 2.4 1.97 4.35 4.35 4.35h1.78v1.7c0 2.4 1.94 4.34 4.34 4.35V2.84A.84.84 0 0 0 21.16 2H11.53zM6.77 6.8a4.36 4.36 0 0 0 4.34 4.34h1.8v1.72a4.36 4.36 0 0 0 4.34 4.34V7.63a.84.84 0 0 0-.83-.83H6.77zM2 11.6c0 2.4 1.95 4.34 4.35 4.35h1.78v1.72c0 2.4 1.95 4.34 4.35 4.34V12.44a.84.84 0 0 0-.84-.84H2z" />
+                    </svg>
+                    Connect Jira
+                  </a>
+                )}
+
+                {jiraMessage && (
+                  <p
+                    className="text-xs mt-3"
+                    style={{ color: jiraMessage.type === "success" ? "var(--status-done)" : "var(--priority-critical)" }}
+                  >
+                    {jiraMessage.text}
+                  </p>
+                )}
+              </div>
+
               {/* ─── Profile ─── */}
               <div
                 className="rounded-xl p-5"
@@ -594,6 +742,9 @@ export function SettingsPage({
           </div>
         </div>
       </div>
+
+      {/* Jira Sync Modal */}
+      <JiraSyncModal workboards={workboards} syncHook={syncHook} />
     </>
   );
 }
