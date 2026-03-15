@@ -73,3 +73,19 @@ export const commentSchema = z.object({
 });
 
 export type CommentInput = z.output<typeof commentSchema>;
+
+// ── Upload constants ──────────────────────────────────────────
+export const UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+export const UPLOAD_ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "application/pdf",
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+] as const;
