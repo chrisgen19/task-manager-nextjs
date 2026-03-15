@@ -305,12 +305,14 @@ interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  fillHeight?: boolean;
 }
 
 export function RichTextEditor({
   value,
   onChange,
   placeholder = "Type '/' for commands, or start writing…",
+  fillHeight = false,
 }: RichTextEditorProps) {
   const [slashState, setSlashState] = useState<SlashState | null>(null);
   const slashRef = useRef<SlashState | null>(null);
@@ -440,11 +442,11 @@ export function RichTextEditor({
 
   return (
     <div
-      className="tiptap-editor flex flex-col overflow-hidden rounded-lg"
+      className={`tiptap-editor flex flex-col overflow-hidden rounded-lg${fillHeight ? " h-full" : ""}`}
       style={{ border: "1px solid var(--border-primary)", background: "var(--bg-primary)" }}
     >
       <Toolbar editor={editor} />
-      <div className="overflow-y-auto" style={{ minHeight: "140px", maxHeight: "480px" }}>
+      <div className={`overflow-y-auto${fillHeight ? " flex-1" : ""}`} style={{ minHeight: "140px", ...(!fillHeight && { maxHeight: "480px" }) }}>
         <EditorContent editor={editor} />
       </div>
       {slashState && slashState.items.length > 0 && (

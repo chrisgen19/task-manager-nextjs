@@ -134,8 +134,9 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
         style={{
           background: "var(--bg-secondary)",
           border: "1px solid var(--border-primary)",
-          maxHeight: "90vh",
-          maxWidth: "860px",
+          maxHeight: "min(92vh, 960px)",
+          maxWidth: "1280px",
+          width: "calc(100vw - 48px)",
         }}
       >
         {/* Header */}
@@ -159,8 +160,8 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
         </div>
 
         {/* Form — 2-column layout */}
-        <form onSubmit={handleSubmit(onSave)} className="flex flex-col min-h-0 overflow-hidden">
-          <div className="flex min-h-0 overflow-hidden">
+        <form onSubmit={handleSubmit(onSave)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-1 min-h-0 overflow-hidden">
 
             {/* LEFT: Title + Description */}
             <div
@@ -194,12 +195,12 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
                     — supports rich text, paste from Jira
                   </span>
                 </Label>
-                <div className="flex-1" style={{ minHeight: "200px" }}>
+                <div className="flex-1 [&>div]:h-full">
                   <Controller
                     name="description"
                     control={control}
                     render={({ field }) => (
-                      <RichTextEditor value={field.value ?? ""} onChange={field.onChange} />
+                      <RichTextEditor value={field.value ?? ""} onChange={field.onChange} fillHeight />
                     )}
                   />
                 </div>
@@ -207,7 +208,7 @@ export function TaskModal({ workboards, defaultStatus, defaultDueDate, defaultWo
             </div>
 
             {/* RIGHT: Metadata fields */}
-            <div className="flex flex-col shrink-0 p-6 gap-5 overflow-y-auto" style={{ width: "240px" }}>
+            <div className="flex flex-col shrink-0 p-6 gap-5 overflow-y-auto" style={{ width: "280px" }}>
 
               {/* Board */}
               <div>

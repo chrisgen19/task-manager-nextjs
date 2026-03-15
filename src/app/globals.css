@@ -60,10 +60,10 @@
 /* Light theme */
 html.light {
   /* Priority — light theme (darker for text on white) */
-  --priority-low: #15803d;
-  --priority-medium: #a16207;
-  --priority-high: #c2410c;
-  --priority-critical: #dc2626;
+  --priority-low: #166534;
+  --priority-medium: #854d0e;
+  --priority-high: #9a3412;
+  --priority-critical: #b91c1c;
 
   /* Accent colors — light theme (600/700-level, darker for text on white) */
   --accent-blue: #2563eb;
