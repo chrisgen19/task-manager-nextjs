@@ -277,6 +277,7 @@ export function TaskDetail({ task: initialTask, subtasks: initialSubtasks = [] }
         };
         setSubtasks((prev) => [...prev, newSubtask]);
         setNewSubtaskTitle("");
+        setActivityRefresh((c) => c + 1);
       } else {
         const body = await res.json().catch(() => ({}));
         setSaveError(body.error ?? "Failed to create subtask");

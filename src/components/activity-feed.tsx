@@ -114,7 +114,8 @@ export function ActivityFeed({ taskId, refreshTrigger }: ActivityFeedProps) {
       });
       if (res.ok) {
         setCommentText("");
-        fetchFeed();
+        if (filter === "activity") setFilter("all");
+        else fetchFeed();
       }
     } finally {
       setSubmitting(false);
