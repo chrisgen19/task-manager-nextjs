@@ -130,6 +130,16 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
     [visibleTasks, filters, sort]
   );
 
+  // Prune selected IDs that no longer exist in the visible task list
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleIds = new Set(filteredTasks.map((t) => t.id));
+      const pruned = new Set([...prev].filter((id) => visibleIds.has(id)));
+      return pruned.size === prev.size ? prev : pruned;
+    });
+  }, [filteredTasks]);
+
   const addToast = useCallback((message: string, type: Toast["type"]) => {
     const id = makeToastId();
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -371,10 +381,10 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
           onToggleSubtasks={toggleShowSubtasks}
         />
 
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {selectedIds.size > 0 && (
             <div
-              className="absolute top-0 left-0 right-0 z-10 flex items-center gap-3 px-4 py-2 text-sm"
+              className="flex items-center gap-3 px-4 py-2 text-sm shrink-0"
               style={{ background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border-primary)" }}
             >
               <span style={{ color: "var(--text-secondary)" }}>
@@ -399,6 +409,7 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
               </button>
             </div>
           )}
+          <div className="flex-1 min-h-0 overflow-hidden">
           {view === "list" && (
             <ListView
               tasks={filteredTasks}
@@ -427,6 +438,7 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
           {view === "timeline" && (
             <TimelineView tasks={filteredTasks} onNavigate={navigateToTask} />
           )}
+          </div>
         </main>
       </div>
 
