@@ -74,6 +74,16 @@ export const commentSchema = z.object({
 
 export type CommentInput = z.output<typeof commentSchema>;
 
+// ── Jira sync ─────────────────────────────────────────────────
+
+export const jiraSyncSchema = z.object({
+  workboardId: z.string().min(1),
+  issueIds: z.array(z.string()).min(1).max(100),
+  includeChildren: z.boolean().default(false),
+});
+
+export type JiraSyncInput = z.output<typeof jiraSyncSchema>;
+
 // ── Upload constants ──────────────────────────────────────────
 export const UPLOAD_MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
