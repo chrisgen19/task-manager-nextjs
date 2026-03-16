@@ -80,17 +80,31 @@ export function SettingsPage({
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [jiraSites, setJiraSites] = useState<Array<{ id: string; name: string; url: string }>>([]);
+  const [selectedSite, setSelectedSite] = useState("");
+  const [completingConnection, setCompletingConnection] = useState(false);
   const syncHook = useJiraSync();
 
-  // Show toast on jira=connected query param
+  // Handle jira query params on mount
   useEffect(() => {
     const jiraParam = searchParams.get("jira");
     if (jiraParam === "connected") {
       setJiraMessage({ type: "success", text: "Jira connected successfully" });
-      // Clean URL
       window.history.replaceState({}, "", "/settings");
     } else if (jiraParam === "error") {
       setJiraMessage({ type: "error", text: "Failed to connect Jira" });
+      window.history.replaceState({}, "", "/settings");
+    } else if (jiraParam === "select-site") {
+      // Multi-site: parse available sites from URL
+      try {
+        const sitesParam = searchParams.get("sites");
+        if (sitesParam) {
+          const sites = JSON.parse(decodeURIComponent(sitesParam));
+          setJiraSites(sites);
+        }
+      } catch {
+        setJiraMessage({ type: "error", text: "Failed to parse Jira sites" });
+      }
       window.history.replaceState({}, "", "/settings");
     }
   }, [searchParams]);
@@ -135,6 +149,29 @@ export function SettingsPage({
     }).catch(() => {
       setShowSubtasks(!next);
     });
+  }
+
+  async function handleJiraSiteSelect() {
+    const site = jiraSites.find((s) => s.id === selectedSite);
+    if (!site) return;
+    setCompletingConnection(true);
+    setJiraMessage(null);
+    try {
+      const cloudName = new URL(site.url).hostname;
+      const res = await fetch("/api/auth/jira/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cloudId: site.id, cloudName }),
+      });
+      if (!res.ok) throw new Error("Failed to complete connection");
+      setJiraConnection({ id: "", cloudName, connectedAt: new Date().toISOString() });
+      setJiraSites([]);
+      setJiraMessage({ type: "success", text: "Jira connected successfully" });
+    } catch {
+      setJiraMessage({ type: "error", text: "Failed to connect to selected site" });
+    } finally {
+      setCompletingConnection(false);
+    }
   }
 
   async function handleJiraDisconnect() {
@@ -556,6 +593,54 @@ export function SettingsPage({
                         Disconnect
                       </button>
                     </div>
+                  </div>
+                ) : jiraSites.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                      Multiple Jira sites found. Select which one to connect:
+                    </p>
+                    <div className="space-y-2">
+                      {jiraSites.map((site) => (
+                        <button
+                          key={site.id}
+                          onClick={() => setSelectedSite(site.id)}
+                          className="w-full flex items-center gap-3 px-3.5 py-3 rounded-lg text-left transition-colors"
+                          style={{
+                            background: selectedSite === site.id ? "var(--bg-tertiary)" : "transparent",
+                            border: selectedSite === site.id ? "1.5px solid var(--accent)" : "1.5px solid var(--border-primary)",
+                          }}
+                        >
+                          <div
+                            className="w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center shrink-0"
+                            style={{
+                              borderColor: selectedSite === site.id ? "var(--accent)" : "var(--border-secondary)",
+                              background: selectedSite === site.id ? "var(--accent)" : "transparent",
+                            }}
+                          >
+                            {selectedSite === site.id && <Check size={10} style={{ color: "var(--accent-contrast)" }} />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{site.name}</p>
+                            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{new URL(site.url).hostname}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleJiraSiteSelect}
+                      disabled={!selectedSite || completingConnection}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-40"
+                      style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
+                    >
+                      {completingConnection ? (
+                        <span className="flex items-center gap-1.5">
+                          <Loader2 size={14} className="animate-spin" />
+                          Connecting...
+                        </span>
+                      ) : (
+                        "Connect Selected Site"
+                      )}
+                    </button>
                   </div>
                 ) : (
                   // eslint-disable-next-line @next/next/no-html-link-for-pages

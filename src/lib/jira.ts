@@ -233,13 +233,24 @@ export interface MappedJiraTask {
   jiraUrl: string;
 }
 
+/** Escape HTML entities to prevent XSS when plain text is stored in an HTML field. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function mapJiraIssueToTask(issue: JiraIssue, cloudName: string): MappedJiraTask {
-  const description = adfToPlainText(issue.fields.description);
+  const rawDescription = adfToPlainText(issue.fields.description);
+  const description = escapeHtml(rawDescription);
   const priorityName = (issue.fields.priority?.name || "medium").toLowerCase();
   const statusCategoryKey = issue.fields.status.statusCategory.key;
 
   return {
-    title: issue.fields.summary,
+    title: escapeHtml(issue.fields.summary),
     description,
     priority: PRIORITY_MAP[priorityName] ?? 1,
     status: STATUS_CATEGORY_MAP[statusCategoryKey] ?? 1,

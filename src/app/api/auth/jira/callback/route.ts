@@ -75,29 +75,58 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/settings?jira=error", request.url));
   }
 
-  const site = resources[0];
-  // Extract hostname from URL (e.g. "https://mycompany.atlassian.net" → "mycompany.atlassian.net")
-  const cloudName = new URL(site.url).hostname;
+  const encryptedAccess = encryptToken(tokens.access_token);
+  const encryptedRefresh = encryptToken(tokens.refresh_token);
+  const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
-  // Upsert connection
-  await db.jiraConnection.upsert({
-    where: { userId: session.user.id },
-    create: {
-      userId: session.user.id,
-      accessToken: encryptToken(tokens.access_token),
-      refreshToken: encryptToken(tokens.refresh_token),
-      expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-      cloudId: site.id,
-      cloudName,
-    },
-    update: {
-      accessToken: encryptToken(tokens.access_token),
-      refreshToken: encryptToken(tokens.refresh_token),
-      expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-      cloudId: site.id,
-      cloudName,
-    },
+  if (resources.length === 1) {
+    // Single site — connect immediately
+    const site = resources[0];
+    const cloudName = new URL(site.url).hostname;
+
+    await db.jiraConnection.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        accessToken: encryptedAccess,
+        refreshToken: encryptedRefresh,
+        expiresAt,
+        cloudId: site.id,
+        cloudName,
+      },
+      update: {
+        accessToken: encryptedAccess,
+        refreshToken: encryptedRefresh,
+        expiresAt,
+        cloudId: site.id,
+        cloudName,
+      },
+    });
+
+    return NextResponse.redirect(new URL("/settings?jira=connected", request.url));
+  }
+
+  // Multiple sites — store tokens temporarily, let user pick
+  const sitesPayload = resources.map((r) => ({
+    id: r.id,
+    name: r.name,
+    url: r.url,
+  }));
+
+  cookieStore.set("jira_pending_tokens", JSON.stringify({
+    accessToken: encryptedAccess,
+    refreshToken: encryptedRefresh,
+    expiresAt: expiresAt.toISOString(),
+  }), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 600, // 10 minutes
+    path: "/",
   });
 
-  return NextResponse.redirect(new URL("/settings?jira=connected", request.url));
+  const sitesParam = encodeURIComponent(JSON.stringify(sitesPayload));
+  return NextResponse.redirect(
+    new URL(`/settings?jira=select-site&sites=${sitesParam}`, request.url),
+  );
 }

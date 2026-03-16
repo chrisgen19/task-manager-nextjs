@@ -53,9 +53,16 @@ export function useJiraSync() {
 
   // Debounce ref
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // AbortController to cancel stale requests
+  const abortRef = useRef<AbortController>(undefined);
 
   const fetchIssues = useCallback(
     async (append = false) => {
+      // Abort previous in-flight request to prevent stale data
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setState((prev) => ({
         ...prev,
         loading: !append,
@@ -75,7 +82,9 @@ export function useJiraSync() {
       }
 
       try {
-        const res = await fetch(`/api/jira/issues?${params}`);
+        const res = await fetch(`/api/jira/issues?${params}`, {
+          signal: controller.signal,
+        });
         if (!res.ok) {
           const data = await res.json();
           throw new Error(data.error || "Failed to fetch issues");
@@ -90,6 +99,8 @@ export function useJiraSync() {
           error: null,
         }));
       } catch (err) {
+        // Ignore aborted requests
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setState((prev) => ({
           ...prev,
           loading: false,
