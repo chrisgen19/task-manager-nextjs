@@ -11,6 +11,13 @@ export async function getJiraConnection(userId: string) {
 }
 
 /**
+ * Per-user mutex to prevent concurrent token refreshes.
+ * Atlassian rotates refresh tokens, so parallel refreshes with the same
+ * token cause `invalid_grant` on the second request.
+ */
+const refreshLocks = new Map<string, Promise<string>>();
+
+/**
  * Returns a valid access token for the user.
  * Auto-refreshes if the token expires within 5 minutes.
  */
@@ -24,8 +31,22 @@ export async function getValidAccessToken(userId: string): Promise<string> {
     return decryptToken(connection.accessToken);
   }
 
-  // Refresh the token
-  const refreshToken = decryptToken(connection.refreshToken);
+  // If a refresh is already in-flight for this user, reuse it
+  const existing = refreshLocks.get(userId);
+  if (existing) return existing;
+
+  const refreshPromise = performTokenRefresh(userId, connection.refreshToken);
+  refreshLocks.set(userId, refreshPromise);
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshLocks.delete(userId);
+  }
+}
+
+async function performTokenRefresh(userId: string, encryptedRefreshToken: string): Promise<string> {
+  const refreshToken = decryptToken(encryptedRefreshToken);
   const res = await fetch(`${ATLASSIAN_AUTH_URL}/oauth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -155,6 +176,11 @@ export async function fetchJiraProjects(userId: string): Promise<JiraProject[]> 
 /**
  * Recursively extract plain text from Atlassian Document Format JSON.
  */
+const ADF_BLOCK_TYPES = new Set([
+  "doc", "paragraph", "heading", "bulletList", "orderedList",
+  "listItem", "blockquote", "codeBlock", "table", "tableRow", "tableCell",
+]);
+
 export function adfToPlainText(adf: unknown): string {
   if (!adf || typeof adf !== "object") return "";
 
@@ -165,9 +191,11 @@ export function adfToPlainText(adf: unknown): string {
   }
 
   if (Array.isArray(node.content)) {
+    const separator = ADF_BLOCK_TYPES.has(node.type ?? "") ? "\n" : "";
     return node.content
       .map((child) => adfToPlainText(child))
-      .join(node.type === "paragraph" ? "\n" : "");
+      .join(separator)
+      .trim();
   }
 
   return "";

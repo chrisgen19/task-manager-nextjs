@@ -166,7 +166,7 @@ export function useJiraSync() {
     setSelected(new Set());
   }, []);
 
-  // Sync
+  // Sync — batches in chunks of 100 to stay within server limit
   const syncSelected = useCallback(async () => {
     if (!workboardId || selected.size === 0) return;
     setSyncing(true);
@@ -174,24 +174,31 @@ export function useJiraSync() {
     setSyncError(null);
 
     try {
-      const res = await fetch("/api/jira/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workboardId,
-          issueIds: Array.from(selected),
-        }),
-      });
+      const allIds = Array.from(selected);
+      let totalCreated = 0;
+      let totalUpdated = 0;
 
-      if (!res.ok) {
+      // Process in chunks of 100
+      for (let i = 0; i < allIds.length; i += 100) {
+        const chunk = allIds.slice(i, i + 100);
+        const res = await fetch("/api/jira/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workboardId, issueIds: chunk }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Sync failed");
+        }
+
         const data = await res.json();
-        throw new Error(data.error || "Sync failed");
+        totalCreated += data.created;
+        totalUpdated += data.updated;
       }
 
-      const data = await res.json();
-      setSyncResult({ created: data.created, updated: data.updated });
+      setSyncResult({ created: totalCreated, updated: totalUpdated });
       setSelected(new Set());
-      // Refresh issues to update synced status
       fetchIssues();
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : "Sync failed");
