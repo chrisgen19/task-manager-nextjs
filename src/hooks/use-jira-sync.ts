@@ -188,7 +188,7 @@ export function useJiraSync() {
   }, []);
 
   // Sync — batches in chunks of 100 to stay within server limit
-  const syncSelected = useCallback(async () => {
+  const syncSelected = useCallback(async (includeChildren = false) => {
     if (!workboardId || selected.size === 0) return;
     setSyncing(true);
     setSyncResult(null);
@@ -206,7 +206,7 @@ export function useJiraSync() {
         const res = await fetch("/api/jira/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workboardId, issueIds: chunk }),
+          body: JSON.stringify({ workboardId, issueIds: chunk, includeChildren }),
         });
 
         if (!res.ok) {

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { workboardId, issueIds } = parsed.data;
+  const { workboardId, issueIds, includeChildren } = parsed.data;
 
   // Verify workboard ownership
   const workboard = await db.workboard.findFirst({
@@ -42,25 +42,32 @@ export async function POST(request: NextRequest) {
   const result = await fetchJiraIssues(session.user.id, { jql, maxResults: 100 });
   const issueMap = new Map(result.issues.map((i: JiraIssue) => [i.id, i]));
 
-  // Auto-fetch subtasks for selected parent issues
+  // Auto-fetch children for parent issues and epics (opt-in)
   const selectedIds = new Set(issueIds);
-  const parentKeys = result.issues
-    .filter((i: JiraIssue) => !i.fields.parent && i.fields.subtasks && i.fields.subtasks.length > 0)
-    .map((i: JiraIssue) => i.key);
-
   let autoImported = 0;
 
-  if (parentKeys.length > 0) {
-    const subtaskJql = `parent in (${parentKeys.join(",")})`;
-    const subtaskResult = await fetchJiraIssues(session.user.id, {
-      jql: subtaskJql,
-      maxResults: 100,
-    });
+  if (includeChildren) {
+    // Collect keys of issues that have subtasks OR are Epics
+    const parentKeys = result.issues
+      .filter((i: JiraIssue) => {
+        const hasSubtasks = !i.fields.parent && i.fields.subtasks && i.fields.subtasks.length > 0;
+        const isEpic = i.fields.issuetype?.name?.toLowerCase() === "epic";
+        return hasSubtasks || isEpic;
+      })
+      .map((i: JiraIssue) => i.key);
 
-    for (const subtask of subtaskResult.issues) {
-      if (!selectedIds.has(subtask.id)) {
-        selectedIds.add(subtask.id);
-        issueMap.set(subtask.id, subtask);
+    if (parentKeys.length > 0) {
+      const childrenJql = `parent in (${parentKeys.join(",")})`;
+      const childrenResult = await fetchJiraIssues(session.user.id, {
+        jql: childrenJql,
+        maxResults: 100,
+      });
+
+      for (const child of childrenResult.issues) {
+        if (!selectedIds.has(child.id)) {
+          selectedIds.add(child.id);
+          issueMap.set(child.id, child);
+        }
       }
     }
   }

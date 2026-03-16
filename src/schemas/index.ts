@@ -79,6 +79,7 @@ export type CommentInput = z.output<typeof commentSchema>;
 export const jiraSyncSchema = z.object({
   workboardId: z.string().min(1),
   issueIds: z.array(z.string()).min(1).max(100),
+  includeChildren: z.boolean().default(false),
 });
 
 export type JiraSyncInput = z.output<typeof jiraSyncSchema>;

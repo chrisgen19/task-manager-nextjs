@@ -102,6 +102,25 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
       ? "All Statuses"
       : statusFilters.map((s) => STATUS_OPTIONS.find((o) => o.value === s)?.label).filter(Boolean).join(", ");
 
+  // Confirmation dialog state for child auto-import
+  const [showChildPrompt, setShowChildPrompt] = useState(false);
+
+  // Count selected parents/epics that have children
+  const selectedParentCount = issues.filter((i) => {
+    if (!selected.has(i.id)) return false;
+    const hasSubtasks = !i.fields.parent && (i.fields.subtasks?.length ?? 0) > 0;
+    const isEpic = i.fields.issuetype?.name?.toLowerCase() === "epic";
+    return hasSubtasks || isEpic;
+  }).length;
+
+  const handleImportClick = () => {
+    if (selectedParentCount > 0) {
+      setShowChildPrompt(true);
+    } else {
+      syncSelected(false);
+    }
+  };
+
   // Click-outside for project dropdown
   useEffect(() => {
     if (!projectOpen) return;
@@ -583,7 +602,7 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
             )}
           </div>
           <button
-            onClick={syncSelected}
+            onClick={handleImportClick}
             disabled={syncing || selected.size === 0 || !workboardId}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-40"
             style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
@@ -598,6 +617,62 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
             )}
           </button>
         </div>
+
+        {/* Child import confirmation dialog */}
+        {showChildPrompt && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center rounded-xl"
+            style={{ background: "rgba(0,0,0,0.5)" }}
+          >
+            <div
+              className="mx-6 p-5 rounded-xl max-w-sm w-full"
+              style={{
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-primary)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+              }}
+            >
+              <p className="text-sm font-medium mb-2" style={{ color: "var(--text-primary)" }}>
+                Import children?
+              </p>
+              <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+                {selectedParentCount} of the selected issue{selectedParentCount !== 1 ? "s" : ""} {selectedParentCount !== 1 ? "have" : "has"} subtasks
+                or child issues. Would you like to import them as well?
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowChildPrompt(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{
+                    background: "var(--bg-tertiary)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border-primary)",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { setShowChildPrompt(false); syncSelected(false); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{
+                    background: "var(--bg-tertiary)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-primary)",
+                  }}
+                >
+                  No, just selected
+                </button>
+                <button
+                  onClick={() => { setShowChildPrompt(false); syncSelected(true); }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
+                >
+                  Yes, include children
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
