@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   X,
   Search,
@@ -23,6 +23,12 @@ const STATUS_CATEGORY_LABEL: Record<string, string> = {
   done: "Done",
 };
 
+const STATUS_OPTIONS = [
+  { value: "todo", label: "To Do" },
+  { value: "inprogress", label: "In Progress" },
+  { value: "done", label: "Done" },
+] as const;
+
 const STATUS_CATEGORY_COLOR: Record<string, string> = {
   new: "var(--status-todo)",
   indeterminate: "var(--status-in-progress)",
@@ -44,8 +50,8 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
     setSearch,
     projectFilter,
     setProjectFilter,
-    statusFilter,
-    setStatusFilter,
+    statusFilters,
+    toggleStatusFilter,
     workboardId,
     setWorkboardId,
     projects,
@@ -66,6 +72,51 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
   } = syncHook;
 
   const backdropRef = useRef<HTMLDivElement>(null);
+
+  // Project combobox state
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [projectQuery, setProjectQuery] = useState("");
+  const projectRef = useRef<HTMLDivElement>(null);
+  const selectedProject = projects.find((p) => p.key === projectFilter);
+  const filteredProjects = projects.filter(
+    (p) =>
+      !projectQuery ||
+      p.name.toLowerCase().includes(projectQuery.toLowerCase()) ||
+      p.key.toLowerCase().includes(projectQuery.toLowerCase()),
+  );
+
+  // Status multi-select state
+  const [statusOpen, setStatusOpen] = useState(false);
+  const statusRef = useRef<HTMLDivElement>(null);
+  const statusLabel =
+    statusFilters.length === 0 || statusFilters.length === STATUS_OPTIONS.length
+      ? "All Statuses"
+      : statusFilters.map((s) => STATUS_OPTIONS.find((o) => o.value === s)?.label).filter(Boolean).join(", ");
+
+  // Click-outside for project dropdown
+  useEffect(() => {
+    if (!projectOpen) return;
+    function onClick(e: MouseEvent) {
+      if (projectRef.current && !projectRef.current.contains(e.target as Node)) {
+        setProjectOpen(false);
+        setProjectQuery("");
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [projectOpen]);
+
+  // Click-outside for status dropdown
+  useEffect(() => {
+    if (!statusOpen) return;
+    function onClick(e: MouseEvent) {
+      if (statusRef.current && !statusRef.current.contains(e.target as Node)) {
+        setStatusOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [statusOpen]);
 
   // Close on Escape
   useEffect(() => {
@@ -180,53 +231,125 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
           </div>
 
           <div className="flex gap-2">
-            <div className="relative flex-1">
-              <select
-                value={projectFilter}
-                onChange={(e) => setProjectFilter(e.target.value)}
-                className="w-full text-xs rounded-lg outline-none appearance-none pr-7"
+            {/* Project combobox */}
+            <div className="relative flex-1" ref={projectRef}>
+              <input
+                value={projectOpen ? projectQuery : (selectedProject ? `${selectedProject.name} (${selectedProject.key})` : "")}
+                onChange={(e) => {
+                  setProjectQuery(e.target.value);
+                  if (!projectOpen) setProjectOpen(true);
+                }}
+                onFocus={() => {
+                  setProjectOpen(true);
+                  setProjectQuery("");
+                }}
+                placeholder="All Projects"
+                className="w-full text-xs rounded-lg outline-none pr-7"
                 style={{
                   background: "var(--bg-tertiary)",
-                  border: "1px solid var(--border-primary)",
+                  border: `1px solid ${projectOpen ? "var(--accent)" : "var(--border-primary)"}`,
                   color: "var(--text-primary)",
                   padding: "6px 10px",
                 }}
-              >
-                <option value="">All Projects</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.key}>
-                    {p.name} ({p.key})
-                  </option>
-                ))}
-              </select>
+              />
               <ChevronDown
                 size={12}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
                 style={{ color: "var(--text-tertiary)" }}
               />
+              {projectOpen && (
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 z-10 max-h-48 overflow-y-auto rounded-lg py-1"
+                  style={{
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-primary)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  }}
+                >
+                  <button
+                    onClick={() => { setProjectFilter(""); setProjectOpen(false); setProjectQuery(""); }}
+                    className="w-full text-left text-xs px-3 py-1.5 transition-colors"
+                    style={{ color: !projectFilter ? "var(--accent)" : "var(--text-secondary)" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                  >
+                    All Projects
+                  </button>
+                  {filteredProjects.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setProjectFilter(p.key); setProjectOpen(false); setProjectQuery(""); }}
+                      className="w-full text-left text-xs px-3 py-1.5 transition-colors"
+                      style={{ color: projectFilter === p.key ? "var(--accent)" : "var(--text-primary)" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                    >
+                      {p.name} <span style={{ color: "var(--text-tertiary)" }}>({p.key})</span>
+                    </button>
+                  ))}
+                  {filteredProjects.length === 0 && (
+                    <div className="text-xs px-3 py-1.5" style={{ color: "var(--text-tertiary)" }}>
+                      No projects found
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="relative flex-1">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full text-xs rounded-lg outline-none appearance-none pr-7"
+
+            {/* Status multi-select */}
+            <div className="relative flex-1" ref={statusRef}>
+              <button
+                onClick={() => setStatusOpen(!statusOpen)}
+                className="w-full text-left text-xs rounded-lg pr-7 truncate"
                 style={{
                   background: "var(--bg-tertiary)",
-                  border: "1px solid var(--border-primary)",
-                  color: "var(--text-primary)",
+                  border: `1px solid ${statusOpen ? "var(--accent)" : "var(--border-primary)"}`,
+                  color: statusFilters.length === 0 ? "var(--text-tertiary)" : "var(--text-primary)",
                   padding: "6px 10px",
                 }}
               >
-                <option value="">All Statuses</option>
-                <option value="todo">To Do</option>
-                <option value="inprogress">In Progress</option>
-                <option value="done">Done</option>
-              </select>
+                {statusLabel}
+              </button>
               <ChevronDown
                 size={12}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
                 style={{ color: "var(--text-tertiary)" }}
               />
+              {statusOpen && (
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 z-10 rounded-lg py-1"
+                  style={{
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-primary)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  }}
+                >
+                  {STATUS_OPTIONS.map((opt) => {
+                    const isChecked = statusFilters.includes(opt.value);
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => toggleStatusFilter(opt.value)}
+                        className="w-full flex items-center gap-2 text-left text-xs px-3 py-1.5 transition-colors"
+                        style={{ color: "var(--text-primary)" }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                      >
+                        <div
+                          className="w-3.5 h-3.5 rounded border-[1.5px] flex items-center justify-center shrink-0"
+                          style={{
+                            borderColor: isChecked ? "var(--accent)" : "var(--border-secondary)",
+                            background: isChecked ? "var(--accent)" : "transparent",
+                          }}
+                        >
+                          {isChecked && <Check size={9} style={{ color: "var(--accent-contrast)" }} />}
+                        </div>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

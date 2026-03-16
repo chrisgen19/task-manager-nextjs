@@ -28,7 +28,7 @@ export function useJiraSync() {
   // Filters
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [workboardId, setWorkboardId] = useState("");
 
   // Projects
@@ -56,6 +56,9 @@ export function useJiraSync() {
   // AbortController to cancel stale requests
   const abortRef = useRef<AbortController>(undefined);
 
+  // Serialized status filters for stable dependency tracking
+  const statusFilterKey = statusFilters.join(",");
+
   const fetchIssues = useCallback(
     async (append = false) => {
       // Abort previous in-flight request to prevent stale data
@@ -73,7 +76,7 @@ export function useJiraSync() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (projectFilter) params.set("project", projectFilter);
-      if (statusFilter) params.set("status", statusFilter);
+      if (statusFilterKey) params.set("status", statusFilterKey);
       params.set("maxResults", "50");
 
       // For "load more", pass the current nextPageToken
@@ -109,7 +112,7 @@ export function useJiraSync() {
         }));
       }
     },
-    [search, projectFilter, statusFilter, state.nextPageToken],
+    [search, projectFilter, statusFilterKey, state.nextPageToken],
   );
 
   const fetchProjects = useCallback(async () => {
@@ -129,7 +132,7 @@ export function useJiraSync() {
     setOpen(true);
     setSearch("");
     setProjectFilter("");
-    setStatusFilter("");
+    setStatusFilters([]);
     setSelected(new Set());
     setSyncResult(null);
     setSyncError(null);
@@ -153,7 +156,7 @@ export function useJiraSync() {
     }, 300);
     return () => clearTimeout(debounceRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, projectFilter, statusFilter]);
+  }, [search, projectFilter, statusFilterKey]);
 
   const loadMore = useCallback(() => {
     fetchIssues(true);
@@ -175,6 +178,12 @@ export function useJiraSync() {
 
   const deselectAll = useCallback(() => {
     setSelected(new Set());
+  }, []);
+
+  const toggleStatusFilter = useCallback((status: string) => {
+    setStatusFilters((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
+    );
   }, []);
 
   // Sync — batches in chunks of 100 to stay within server limit
@@ -231,8 +240,8 @@ export function useJiraSync() {
     setSearch,
     projectFilter,
     setProjectFilter,
-    statusFilter,
-    setStatusFilter,
+    statusFilters,
+    toggleStatusFilter,
     workboardId,
     setWorkboardId,
     // Data

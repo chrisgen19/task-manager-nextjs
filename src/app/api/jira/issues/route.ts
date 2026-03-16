@@ -12,17 +12,27 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const search = searchParams.get("search") || "";
   const project = searchParams.get("project") || "";
-  const status = searchParams.get("status") || "";
+  const statusParam = searchParams.get("status") || "";
+  const statuses = statusParam ? statusParam.split(",") : [];
   const nextPageToken = searchParams.get("nextPageToken") || undefined;
   const maxResults = Math.min(parseInt(searchParams.get("maxResults") || "50", 10), 100);
+
+  const STATUS_JQL: Record<string, string> = {
+    todo: '"To Do"',
+    inprogress: '"In Progress"',
+    done: "Done",
+  };
 
   // Build JQL
   const jqlParts: string[] = ["assignee = currentUser()"];
   if (search) jqlParts.push(`text ~ "${search.replace(/"/g, '\\"')}"`);
   if (project) jqlParts.push(`project = "${project.replace(/"/g, '\\"')}"`);
-  if (status === "todo") jqlParts.push("statusCategory = \"To Do\"");
-  else if (status === "inprogress") jqlParts.push("statusCategory = \"In Progress\"");
-  else if (status === "done") jqlParts.push("statusCategory = Done");
+  if (statuses.length === 1 && STATUS_JQL[statuses[0]]) {
+    jqlParts.push(`statusCategory = ${STATUS_JQL[statuses[0]]}`);
+  } else if (statuses.length > 1) {
+    const cats = statuses.map((s) => STATUS_JQL[s]).filter(Boolean);
+    if (cats.length > 0) jqlParts.push(`statusCategory IN (${cats.join(", ")})`);
+  }
   jqlParts.push("ORDER BY updated DESC");
 
   try {
