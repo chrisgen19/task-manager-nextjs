@@ -50,7 +50,6 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
     setWorkboardId,
     projects,
     issues,
-    total,
     loading,
     loadingMore,
     error,
@@ -252,7 +251,7 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
             )}
           </div>
           <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-            {total} issue{total !== 1 ? "s" : ""} found
+            {issues.length} issue{issues.length !== 1 ? "s" : ""} loaded
           </span>
         </div>
 
@@ -387,7 +386,7 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
                         Loading...
                       </span>
                     ) : (
-                      `Load more (${issues.length} of ${total})`
+                      "Load more"
                     )}
                   </button>
                 </div>

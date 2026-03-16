@@ -85,7 +85,7 @@ async function performTokenRefresh(userId: string, encryptedRefreshToken: string
 
 interface FetchIssuesOptions {
   jql?: string;
-  startAt?: number;
+  nextPageToken?: string;
   maxResults?: number;
 }
 
@@ -105,9 +105,7 @@ export interface JiraIssue {
 
 export interface JiraSearchResult {
   issues: JiraIssue[];
-  total: number;
-  startAt: number;
-  maxResults: number;
+  nextPageToken?: string;
 }
 
 export interface JiraProject {
@@ -124,8 +122,16 @@ export async function fetchJiraIssues(
   const token = await getValidAccessToken(userId);
 
   const jql = options.jql || "assignee = currentUser() ORDER BY updated DESC";
-  const startAt = options.startAt ?? 0;
   const maxResults = options.maxResults ?? 50;
+
+  const body: Record<string, unknown> = {
+    jql,
+    maxResults,
+    fields: ["summary", "description", "priority", "status", "duedate", "issuetype", "project"],
+  };
+  if (options.nextPageToken) {
+    body.nextPageToken = options.nextPageToken;
+  }
 
   const res = await fetch(
     `${ATLASSIAN_API_URL}/ex/jira/${connection.cloudId}/rest/api/3/search/jql`,
@@ -136,12 +142,7 @@ export async function fetchJiraIssues(
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        jql,
-        startAt,
-        maxResults,
-        fields: ["summary", "description", "priority", "status", "duedate", "issuetype", "project"],
-      }),
+      body: JSON.stringify(body),
     },
   );
 

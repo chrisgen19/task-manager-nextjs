@@ -10,8 +10,7 @@ interface AnnotatedIssue extends JiraIssue {
 
 interface FetchState {
   issues: AnnotatedIssue[];
-  total: number;
-  startAt: number;
+  nextPageToken: string | null;
   loading: boolean;
   loadingMore: boolean;
   error: string | null;
@@ -41,8 +40,7 @@ export function useJiraSync() {
   // Issues fetch state
   const [state, setState] = useState<FetchState>({
     issues: [],
-    total: 0,
-    startAt: 0,
+    nextPageToken: null,
     loading: false,
     loadingMore: false,
     error: null,
@@ -57,7 +55,7 @@ export function useJiraSync() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchIssues = useCallback(
-    async (append = false, overrideStartAt?: number) => {
+    async (append = false) => {
       setState((prev) => ({
         ...prev,
         loading: !append,
@@ -69,9 +67,12 @@ export function useJiraSync() {
       if (search) params.set("search", search);
       if (projectFilter) params.set("project", projectFilter);
       if (statusFilter) params.set("status", statusFilter);
-      const startAt = overrideStartAt ?? (append ? state.startAt + 50 : 0);
-      params.set("startAt", String(startAt));
       params.set("maxResults", "50");
+
+      // For "load more", pass the current nextPageToken
+      if (append && state.nextPageToken) {
+        params.set("nextPageToken", state.nextPageToken);
+      }
 
       try {
         const res = await fetch(`/api/jira/issues?${params}`);
@@ -83,8 +84,7 @@ export function useJiraSync() {
 
         setState((prev) => ({
           issues: append ? [...prev.issues, ...data.issues] : data.issues,
-          total: data.total,
-          startAt: data.startAt,
+          nextPageToken: data.nextPageToken,
           loading: false,
           loadingMore: false,
           error: null,
@@ -98,7 +98,7 @@ export function useJiraSync() {
         }));
       }
     },
-    [search, projectFilter, statusFilter, state.startAt],
+    [search, projectFilter, statusFilter, state.nextPageToken],
   );
 
   const fetchProjects = useCallback(async () => {
@@ -227,11 +227,10 @@ export function useJiraSync() {
     // Data
     projects,
     issues: state.issues,
-    total: state.total,
     loading: state.loading,
     loadingMore: state.loadingMore,
     error: state.error,
-    hasMore: state.issues.length < state.total,
+    hasMore: !!state.nextPageToken,
     loadMore,
     // Selection
     selected,

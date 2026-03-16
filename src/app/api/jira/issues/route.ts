@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search") || "";
   const project = searchParams.get("project") || "";
   const status = searchParams.get("status") || "";
-  const startAt = parseInt(searchParams.get("startAt") || "0", 10);
+  const nextPageToken = searchParams.get("nextPageToken") || undefined;
   const maxResults = Math.min(parseInt(searchParams.get("maxResults") || "50", 10), 100);
 
   // Build JQL
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await fetchJiraIssues(session.user.id, {
       jql: jqlParts.join(" AND ").replace(" AND ORDER", " ORDER"),
-      startAt,
+      nextPageToken,
       maxResults,
     });
 
@@ -48,9 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       issues,
-      total: result.total,
-      startAt: result.startAt,
-      maxResults: result.maxResults,
+      nextPageToken: result.nextPageToken ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch Jira issues";
