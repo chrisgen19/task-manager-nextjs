@@ -20,6 +20,7 @@ interface SyncResult {
   created: number;
   updated: number;
   autoImported: number;
+  skippedCrossBoard: number;
 }
 
 export function useJiraSync() {
@@ -202,6 +203,7 @@ export function useJiraSync() {
       let totalCreated = 0;
       let totalUpdated = 0;
       let totalAutoImported = 0;
+      let totalSkippedCrossBoard = 0;
 
       // Process in chunks of 100
       for (let i = 0; i < allIds.length; i += 100) {
@@ -221,9 +223,10 @@ export function useJiraSync() {
         totalCreated += data.created;
         totalUpdated += data.updated;
         totalAutoImported += data.autoImported ?? 0;
+        totalSkippedCrossBoard += data.skippedCrossBoard ?? 0;
       }
 
-      setSyncResult({ created: totalCreated, updated: totalUpdated, autoImported: totalAutoImported });
+      setSyncResult({ created: totalCreated, updated: totalUpdated, autoImported: totalAutoImported, skippedCrossBoard: totalSkippedCrossBoard });
       setSelected(new Set());
       fetchIssues();
     } catch (err) {

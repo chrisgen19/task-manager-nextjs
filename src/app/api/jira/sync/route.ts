@@ -129,15 +129,24 @@ export async function POST(request: NextRequest) {
   const childIssueIds = allIds.filter((id) => jiraParentOf.has(id));
   const sortedIds = [...parentIssueIds, ...childIssueIds];
 
-  // Check which issues are already synced
+  // Check which issues are already synced (unscoped — need to detect cross-board duplicates)
   const existingTasks = await db.task.findMany({
-    where: { userId: session.user.id, workboardId, jiraIssueId: { in: allIds } },
-    select: { id: true, jiraIssueId: true, parentId: true },
+    where: { userId: session.user.id, jiraIssueId: { in: allIds } },
+    select: { id: true, jiraIssueId: true, parentId: true, workboardId: true },
   });
-  const existingMap = new Map(existingTasks.map((t) => [t.jiraIssueId, { id: t.id, parentId: t.parentId }]));
+  const existingMap = new Map(
+    existingTasks.map((t) => [t.jiraIssueId, { id: t.id, parentId: t.parentId, workboardId: t.workboardId }]),
+  );
+
+  // Identify issues already synced to a different board (would violate userId+jiraIssueId unique)
+  const crossBoardIssues = existingTasks
+    .filter((t) => t.workboardId !== workboardId && t.jiraIssueId)
+    .map((t) => t.jiraIssueId!);
+  const crossBoardSet = new Set(crossBoardIssues);
 
   let created = 0;
   let updated = 0;
+  let skippedCrossBoard = 0;
   const tasks: Array<{ id: string; jiraIssueKey: string | null }> = [];
 
   const MAX_RETRIES = 3;
@@ -147,6 +156,12 @@ export async function POST(request: NextRequest) {
         for (const issueId of sortedIds) {
           const issue = issueMap.get(issueId);
           if (!issue) continue;
+
+          // Skip issues already synced to a different board
+          if (crossBoardSet.has(issueId)) {
+            skippedCrossBoard++;
+            continue;
+          }
 
           const isAutoImported = !issueIds.includes(issueId);
           const mapped = mapJiraIssueToTask(issue, connection.cloudName);
@@ -242,6 +257,7 @@ export async function POST(request: NextRequest) {
         created = 0;
         updated = 0;
         autoImported = 0;
+        skippedCrossBoard = 0;
         tasks.length = 0;
         jiraToLocalId.clear();
         for (const t of preSyncedParents) {
@@ -253,5 +269,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ created, updated, autoImported, tasks });
+  return NextResponse.json({ created, updated, autoImported, skippedCrossBoard, tasks });
 }

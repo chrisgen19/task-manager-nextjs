@@ -623,6 +623,10 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
                 {syncResult.autoImported > 0 && ` (incl. ${syncResult.autoImported} subtask${syncResult.autoImported !== 1 ? "s" : ""})`}
               </span>
             )}
+            {syncResult && syncResult.skippedCrossBoard > 0 && (
+              <span style={{ color: "var(--priority-high)", marginLeft: syncResult.created > 0 || syncResult.updated > 0 ? 8 : 0 }}>
+                {syncResult.skippedCrossBoard} skipped (already on another board)</span>
+            )}
             {syncError && (
               <span style={{ color: "var(--priority-critical)" }}>{syncError}</span>
             )}
