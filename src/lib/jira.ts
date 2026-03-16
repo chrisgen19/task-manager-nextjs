@@ -245,12 +245,14 @@ function escapeHtml(text: string): string {
 
 export function mapJiraIssueToTask(issue: JiraIssue, cloudName: string): MappedJiraTask {
   const rawDescription = adfToPlainText(issue.fields.description);
-  const description = escapeHtml(rawDescription);
+  // Escape first, then convert newlines to <br> so block separators render in HTML
+  const description = escapeHtml(rawDescription).replace(/\n/g, "<br>");
   const priorityName = (issue.fields.priority?.name || "medium").toLowerCase();
   const statusCategoryKey = issue.fields.status.statusCategory.key;
 
   return {
-    title: escapeHtml(issue.fields.summary),
+    // Title is rendered as React text, not via dangerouslySetInnerHTML — no escaping needed
+    title: issue.fields.summary,
     description,
     priority: PRIORITY_MAP[priorityName] ?? 1,
     status: STATUS_CATEGORY_MAP[statusCategoryKey] ?? 1,

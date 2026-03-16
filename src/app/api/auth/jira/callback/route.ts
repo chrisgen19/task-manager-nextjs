@@ -84,6 +84,15 @@ export async function GET(request: NextRequest) {
     const site = resources[0];
     const cloudName = new URL(site.url).hostname;
 
+    // Clear stale Jira metadata if switching to a different site
+    const existing = await db.jiraConnection.findUnique({ where: { userId: session.user.id } });
+    if (existing && existing.cloudId !== site.id) {
+      await db.task.updateMany({
+        where: { userId: session.user.id, jiraIssueId: { not: null } },
+        data: { jiraIssueId: null, jiraIssueKey: null, jiraSyncedAt: null },
+      });
+    }
+
     await db.jiraConnection.upsert({
       where: { userId: session.user.id },
       create: {
