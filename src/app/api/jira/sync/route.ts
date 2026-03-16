@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
   // Check which issues are already synced
   const existingTasks = await db.task.findMany({
-    where: { userId: session.user.id, jiraIssueId: { in: allIds } },
+    where: { userId: session.user.id, workboardId, jiraIssueId: { in: allIds } },
     select: { id: true, jiraIssueId: true, parentId: true },
   });
   const existingMap = new Map(existingTasks.map((t) => [t.jiraIssueId, { id: t.id, parentId: t.parentId }]));
