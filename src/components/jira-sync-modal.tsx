@@ -59,6 +59,8 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
     setSearch,
     projectFilter,
     setProjectFilter,
+    assigneeFilter,
+    setAssigneeFilter,
     statusFilters,
     toggleStatusFilter,
     workboardId,
@@ -322,6 +324,30 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Assignee filter */}
+            <div className="relative flex-1">
+              <select
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                className="w-full text-xs rounded-lg outline-none appearance-none pr-7"
+                style={{
+                  background: "var(--bg-tertiary)",
+                  border: "1px solid var(--border-primary)",
+                  color: "var(--text-primary)",
+                  padding: "6px 10px",
+                }}
+              >
+                <option value="me">Assigned to me</option>
+                <option value="unassigned">Unassigned</option>
+                <option value="all">All assignees</option>
+              </select>
+              <ChevronDown
+                size={12}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ color: "var(--text-tertiary)" }}
+              />
             </div>
 
             {/* Status multi-select */}

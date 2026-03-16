@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const search = searchParams.get("search") || "";
   const project = searchParams.get("project") || "";
+  const assignee = searchParams.get("assignee") || "me";
   const statusParam = searchParams.get("status") || "";
   const statuses = statusParam ? statusParam.split(",") : [];
   const nextPageToken = searchParams.get("nextPageToken") || undefined;
@@ -24,7 +25,9 @@ export async function GET(request: NextRequest) {
   };
 
   // Build JQL
-  const jqlParts: string[] = ["assignee = currentUser()"];
+  const jqlParts: string[] = [];
+  if (assignee === "me") jqlParts.push("assignee = currentUser()");
+  else if (assignee === "unassigned") jqlParts.push("assignee is EMPTY");
   if (search) jqlParts.push(`text ~ "${search.replace(/"/g, '\\"')}"`);
   if (project) jqlParts.push(`project = "${project.replace(/"/g, '\\"')}"`);
   if (statuses.length === 1 && STATUS_JQL[statuses[0]]) {

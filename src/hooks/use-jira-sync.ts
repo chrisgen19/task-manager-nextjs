@@ -29,6 +29,7 @@ export function useJiraSync() {
   // Filters
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState("");
+  const [assigneeFilter, setAssigneeFilter] = useState("me");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [workboardId, setWorkboardId] = useState("");
 
@@ -77,6 +78,7 @@ export function useJiraSync() {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
       if (projectFilter) params.set("project", projectFilter);
+      if (assigneeFilter) params.set("assignee", assigneeFilter);
       if (statusFilterKey) params.set("status", statusFilterKey);
       params.set("maxResults", "50");
 
@@ -113,7 +115,7 @@ export function useJiraSync() {
         }));
       }
     },
-    [search, projectFilter, statusFilterKey, state.nextPageToken],
+    [search, projectFilter, assigneeFilter, statusFilterKey, state.nextPageToken],
   );
 
   const fetchProjects = useCallback(async () => {
@@ -133,6 +135,7 @@ export function useJiraSync() {
     setOpen(true);
     setSearch("");
     setProjectFilter("");
+    setAssigneeFilter("me");
     setStatusFilters([]);
     setSelected(new Set());
     setSyncResult(null);
@@ -157,7 +160,7 @@ export function useJiraSync() {
     }, 300);
     return () => clearTimeout(debounceRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, projectFilter, statusFilterKey]);
+  }, [search, projectFilter, assigneeFilter, statusFilterKey]);
 
   const loadMore = useCallback(() => {
     fetchIssues(true);
@@ -243,6 +246,8 @@ export function useJiraSync() {
     setSearch,
     projectFilter,
     setProjectFilter,
+    assigneeFilter,
+    setAssigneeFilter,
     statusFilters,
     toggleStatusFilter,
     workboardId,
