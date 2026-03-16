@@ -98,8 +98,10 @@ export interface JiraIssue {
     priority?: { name: string };
     status: { name: string; statusCategory: { key: string } };
     duedate: string | null;
-    issuetype?: { name: string; iconUrl?: string };
+    issuetype?: { name: string; iconUrl?: string; subtask?: boolean };
     project?: { key: string; name: string };
+    parent?: { id: string; key: string; fields: { summary: string } };
+    subtasks?: Array<{ id: string; key: string; fields: { summary: string } }>;
   };
 }
 
@@ -127,7 +129,7 @@ export async function fetchJiraIssues(
   const body: Record<string, unknown> = {
     jql,
     maxResults,
-    fields: ["summary", "description", "priority", "status", "duedate", "issuetype", "project"],
+    fields: ["summary", "description", "priority", "status", "duedate", "issuetype", "project", "parent", "subtasks"],
   };
   if (options.nextPageToken) {
     body.nextPageToken = options.nextPageToken;

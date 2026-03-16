@@ -19,6 +19,7 @@ interface FetchState {
 interface SyncResult {
   created: number;
   updated: number;
+  autoImported: number;
 }
 
 export function useJiraSync() {
@@ -197,6 +198,7 @@ export function useJiraSync() {
       const allIds = Array.from(selected);
       let totalCreated = 0;
       let totalUpdated = 0;
+      let totalAutoImported = 0;
 
       // Process in chunks of 100
       for (let i = 0; i < allIds.length; i += 100) {
@@ -215,9 +217,10 @@ export function useJiraSync() {
         const data = await res.json();
         totalCreated += data.created;
         totalUpdated += data.updated;
+        totalAutoImported += data.autoImported ?? 0;
       }
 
-      setSyncResult({ created: totalCreated, updated: totalUpdated });
+      setSyncResult({ created: totalCreated, updated: totalUpdated, autoImported: totalAutoImported });
       setSelected(new Set());
       fetchIssues();
     } catch (err) {

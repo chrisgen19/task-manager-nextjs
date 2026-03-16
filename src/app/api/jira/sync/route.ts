@@ -42,9 +42,33 @@ export async function POST(request: NextRequest) {
   const result = await fetchJiraIssues(session.user.id, { jql, maxResults: 100 });
   const issueMap = new Map(result.issues.map((i: JiraIssue) => [i.id, i]));
 
-  // Check which issues are already synced
+  // Auto-fetch subtasks for selected parent issues
+  const selectedIds = new Set(issueIds);
+  const parentKeys = result.issues
+    .filter((i: JiraIssue) => !i.fields.parent && i.fields.subtasks && i.fields.subtasks.length > 0)
+    .map((i: JiraIssue) => i.key);
+
+  let autoImported = 0;
+
+  if (parentKeys.length > 0) {
+    const subtaskJql = `parent in (${parentKeys.join(",")})`;
+    const subtaskResult = await fetchJiraIssues(session.user.id, {
+      jql: subtaskJql,
+      maxResults: 100,
+    });
+
+    for (const subtask of subtaskResult.issues) {
+      if (!selectedIds.has(subtask.id)) {
+        selectedIds.add(subtask.id);
+        issueMap.set(subtask.id, subtask);
+      }
+    }
+  }
+
+  // Check which issues are already synced (selected + auto-fetched)
+  const allIds = Array.from(selectedIds);
   const existingTasks = await db.task.findMany({
-    where: { userId: session.user.id, jiraIssueId: { in: issueIds } },
+    where: { userId: session.user.id, jiraIssueId: { in: allIds } },
     select: { id: true, jiraIssueId: true },
   });
   const existingMap = new Map(existingTasks.map((t) => [t.jiraIssueId, t.id]));
@@ -55,9 +79,11 @@ export async function POST(request: NextRequest) {
 
   // Use a transaction for batch creation with counter increment
   await db.$transaction(async (tx) => {
-    for (const issueId of issueIds) {
+    for (const issueId of allIds) {
       const issue = issueMap.get(issueId);
       if (!issue) continue;
+
+      const isAutoImported = !issueIds.includes(issueId);
 
       const mapped = mapJiraIssueToTask(issue, connection.cloudName);
       const existingId = existingMap.get(issueId);
@@ -79,6 +105,7 @@ export async function POST(request: NextRequest) {
         });
         tasks.push(task);
         updated++;
+        if (isAutoImported) autoImported++;
       } else {
         // New: create task and increment workboard counter
         const board = await tx.workboard.update({
@@ -106,9 +133,10 @@ export async function POST(request: NextRequest) {
         });
         tasks.push(task);
         created++;
+        if (isAutoImported) autoImported++;
       }
     }
   });
 
-  return NextResponse.json({ created, updated, tasks });
+  return NextResponse.json({ created, updated, autoImported, tasks });
 }

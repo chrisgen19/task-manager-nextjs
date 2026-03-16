@@ -42,6 +42,15 @@ const PRIORITY_NAME_TO_LOCAL: Record<string, number> = {
   highest: 3, critical: 3, blocker: 3,
 };
 
+const ISSUE_TYPE_COLOR: Record<string, string> = {
+  epic: "#904ee2",
+  story: "#63ba3c",
+  task: "#4bade8",
+  bug: "#e5493a",
+  "sub-task": "var(--text-tertiary)",
+  subtask: "var(--text-tertiary)",
+};
+
 export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
   const {
     open,
@@ -400,15 +409,20 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
                 const priorityName = (issue.fields.priority?.name || "medium").toLowerCase();
                 const localPriority = PRIORITY_NAME_TO_LOCAL[priorityName] ?? 1;
                 const localStatus = catKey === "new" ? 1 : catKey === "indeterminate" ? 2 : catKey === "done" ? 4 : 1;
+                const typeName = issue.fields.issuetype?.name || "Task";
+                const typeColor = ISSUE_TYPE_COLOR[typeName.toLowerCase()] || "var(--text-tertiary)";
+                const isSubtask = !!issue.fields.parent;
+                const subtaskCount = issue.fields.subtasks?.length ?? 0;
 
                 return (
                   <button
                     key={issue.id}
                     onClick={() => toggleSelect(issue.id)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors"
                     style={{
                       background: isSelected ? "var(--bg-tertiary)" : "transparent",
                       border: isSelected ? "1px solid var(--accent)" : "1px solid transparent",
+                      paddingLeft: isSubtask ? "28px" : undefined,
                     }}
                     onMouseEnter={(e) => {
                       if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-tertiary)";
@@ -428,6 +442,17 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
                       {isSelected && <Check size={10} style={{ color: "var(--accent-contrast)" }} />}
                     </div>
 
+                    {/* Issue type badge */}
+                    <span
+                      className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                      style={{
+                        background: `color-mix(in srgb, ${typeColor} 15%, transparent)`,
+                        color: typeColor,
+                      }}
+                    >
+                      {typeName}
+                    </span>
+
                     {/* Issue key badge */}
                     <span
                       className="text-[11px] font-mono font-medium px-1.5 py-0.5 rounded shrink-0"
@@ -440,10 +465,31 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
                       {issue.key}
                     </span>
 
+                    {/* Parent key for subtasks */}
+                    {isSubtask && (
+                      <span className="text-[10px] shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                        ↳ {issue.fields.parent!.key}
+                      </span>
+                    )}
+
                     {/* Summary */}
                     <span className="flex-1 text-sm truncate" style={{ color: "var(--text-primary)" }}>
                       {issue.fields.summary}
                     </span>
+
+                    {/* Subtask count for parents */}
+                    {subtaskCount > 0 && !isSubtask && (
+                      <span
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                        style={{
+                          background: "color-mix(in srgb, var(--accent) 12%, transparent)",
+                          color: "var(--accent)",
+                        }}
+                        title="Subtasks will be auto-imported"
+                      >
+                        +{subtaskCount} subtask{subtaskCount !== 1 ? "s" : ""}
+                      </span>
+                    )}
 
                     {/* Priority dot */}
                     <div
@@ -529,6 +575,7 @@ export function JiraSyncModal({ workboards, syncHook }: JiraSyncModalProps) {
                 {syncResult.created > 0 && `${syncResult.created} imported`}
                 {syncResult.created > 0 && syncResult.updated > 0 && ", "}
                 {syncResult.updated > 0 && `${syncResult.updated} updated`}
+                {syncResult.autoImported > 0 && ` (incl. ${syncResult.autoImported} subtask${syncResult.autoImported !== 1 ? "s" : ""})`}
               </span>
             )}
             {syncError && (
