@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { formatTaskKey } from "@/lib/utils";
+import { Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
@@ -97,6 +98,14 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showSubtasks, setShowSubtasks] = useState(initialShowSubtasks);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
+
+  // Clear selection when filters or view change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters, view]);
 
   // Compute subtasksDone for parent tasks
   const tasksWithSubtasksDone = useMemo(() => {
@@ -287,6 +296,39 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
     }
   }, [filters.workboardId]);
 
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0 || deletingRef.current) return;
+    if (!confirm(`Delete ${selectedIds.size} task${selectedIds.size !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+
+    deletingRef.current = true;
+    setDeleting(true);
+
+    try {
+      const res = await fetch("/api/tasks/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: Array.from(selectedIds) }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        addToast(data.error ?? "Failed to delete tasks.", "error");
+        return;
+      }
+
+      const data = await res.json();
+      // Remove deleted tasks and any subtasks whose parent was deleted
+      setTasks((prev) => prev.filter((t) => !selectedIds.has(t.id) && (!t.parentId || !selectedIds.has(t.parentId))));
+      setSelectedIds(new Set());
+      addToast(`${data.deleted} task${data.deleted !== 1 ? "s" : ""} deleted.`, "success");
+    } catch {
+      addToast("Network error. Please try again.", "error");
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
+    }
+  }, [selectedIds, addToast]);
+
   return (
     <>
       <Sidebar
@@ -315,13 +357,42 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
           onToggleSubtasks={toggleShowSubtasks}
         />
 
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden relative">
+          {selectedIds.size > 0 && (
+            <div
+              className="absolute top-0 left-0 right-0 z-10 flex items-center gap-3 px-4 py-2 text-sm"
+              style={{ background: "var(--bg-tertiary)", borderBottom: "1px solid var(--border-primary)" }}
+            >
+              <span style={{ color: "var(--text-secondary)" }}>
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors"
+                style={{ background: "var(--priority-critical)", color: "#fff", opacity: deleting ? 0.6 : 1 }}
+              >
+                <Trash2 size={13} />
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                <X size={13} />
+                Clear
+              </button>
+            </div>
+          )}
           {view === "list" && (
             <ListView
               tasks={filteredTasks}
               sort={sort}
               onSortChange={setSort}
               onNavigate={navigateToTask}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
             />
           )}
           {view === "kanban" && (

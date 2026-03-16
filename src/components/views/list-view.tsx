@@ -10,6 +10,8 @@ interface ListViewProps {
   sort: TaskSort;
   onSortChange: (sort: TaskSort) => void;
   onNavigate: (task: Task) => void;
+  selectedIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
 }
 
 function SortIcon({ field, sort }: { field: SortField; sort: TaskSort }) {
@@ -39,7 +41,28 @@ const tdStyle = {
   verticalAlign: "middle" as const,
 };
 
-export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProps) {
+export function ListView({ tasks, sort, onSortChange, onNavigate, selectedIds, onSelectionChange }: ListViewProps) {
+  const allSelected = tasks.length > 0 && tasks.every((t) => selectedIds.has(t.id));
+  const someSelected = tasks.some((t) => selectedIds.has(t.id));
+
+  const toggleAll = () => {
+    if (allSelected) {
+      onSelectionChange(new Set());
+    } else {
+      onSelectionChange(new Set(tasks.map((t) => t.id)));
+    }
+  };
+
+  const toggleOne = (taskId: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(taskId)) {
+      next.delete(taskId);
+    } else {
+      next.add(taskId);
+    }
+    onSelectionChange(next);
+  };
+
   const handleSort = (field: SortField) => {
     if (sort.field === field) {
       onSortChange({ field, direction: sort.direction === "asc" ? "desc" : "asc" });
@@ -63,6 +86,15 @@ export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProp
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
           <tr>
+            <th style={{ ...thStyle, cursor: "default", width: "40px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                onChange={toggleAll}
+                className="cursor-pointer accent-[var(--status-in-progress)]"
+              />
+            </th>
             <th style={{ ...thStyle, cursor: "default", width: "120px" }}>Key</th>
             <th style={thStyle} onClick={() => handleSort("priority")}>
               <span className="flex items-center gap-1">Priority <SortIcon field="priority" sort={sort} /></span>
@@ -94,6 +126,14 @@ export function ListView({ tasks, sort, onSortChange, onNavigate }: ListViewProp
                 onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--bg-secondary)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "transparent"; }}
               >
+                <td style={{ ...tdStyle, textAlign: "center", width: "40px" }} onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(task.id)}
+                    onChange={() => toggleOne(task.id)}
+                    className="cursor-pointer accent-[var(--status-in-progress)]"
+                  />
+                </td>
                 <td style={{ ...tdStyle, fontFamily: "monospace", fontSize: "0.75rem" }}>
                   <span className="flex items-center gap-1.5" style={{ color: "var(--text-tertiary)", fontWeight: 600, whiteSpace: "nowrap" }}>
                     {task.parentId
