@@ -5,7 +5,7 @@ import { deleteManyFromR2 } from "@/lib/r2";
 import { z } from "zod";
 
 const bulkDeleteSchema = z.object({
-  taskIds: z.array(z.string().cuid()).min(1).max(100),
+  taskIds: z.array(z.string().cuid()).min(1),
 });
 
 export async function POST(request: NextRequest) {

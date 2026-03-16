@@ -102,10 +102,10 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef(false);
 
-  // Clear selection when filters or view change
+  // Clear selection when filters, view, or subtask visibility change
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [filters, view]);
+  }, [filters, view, showSubtasks]);
 
   // Compute subtasksDone for parent tasks
   const tasksWithSubtasksDone = useMemo(() => {
@@ -317,8 +317,22 @@ export function TaskManager({ initialTasks, initialWorkboards, initialShowSubtas
       }
 
       const data = await res.json();
-      // Remove deleted tasks and any subtasks whose parent was deleted
-      setTasks((prev) => prev.filter((t) => !selectedIds.has(t.id) && (!t.parentId || !selectedIds.has(t.parentId))));
+      // Remove deleted tasks and any subtasks whose parent was deleted, then recompute parent subtaskCounts
+      setTasks((prev) => {
+        const remaining = prev.filter((t) => !selectedIds.has(t.id) && (!t.parentId || !selectedIds.has(t.parentId)));
+        // Count surviving subtasks per parent
+        const subtaskCounts = new Map<string, number>();
+        for (const t of remaining) {
+          if (t.parentId) {
+            subtaskCounts.set(t.parentId, (subtaskCounts.get(t.parentId) ?? 0) + 1);
+          }
+        }
+        return remaining.map((t) =>
+          t.subtaskCount > 0 || subtaskCounts.has(t.id)
+            ? { ...t, subtaskCount: subtaskCounts.get(t.id) ?? 0 }
+            : t
+        );
+      });
       setSelectedIds(new Set());
       addToast(`${data.deleted} task${data.deleted !== 1 ? "s" : ""} deleted.`, "success");
     } catch {
