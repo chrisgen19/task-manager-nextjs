@@ -106,16 +106,22 @@ export async function fetchJiraIssues(
   const startAt = options.startAt ?? 0;
   const maxResults = options.maxResults ?? 50;
 
-  const params = new URLSearchParams({
-    jql,
-    startAt: String(startAt),
-    maxResults: String(maxResults),
-    fields: "summary,description,priority,status,duedate,issuetype,project",
-  });
-
   const res = await fetch(
-    `${ATLASSIAN_API_URL}/ex/jira/${connection.cloudId}/rest/api/3/search?${params}`,
-    { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
+    `${ATLASSIAN_API_URL}/ex/jira/${connection.cloudId}/rest/api/3/search/jql`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        jql,
+        startAt,
+        maxResults,
+        fields: ["summary", "description", "priority", "status", "duedate", "issuetype", "project"],
+      }),
+    },
   );
 
   if (!res.ok) {
