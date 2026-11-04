@@ -2,17 +2,15 @@
 
 ## Server Component with Data Fetching
 
+Components read through the data access layer, never `db`. `getServices()` is a cached read (see Cached Queries in `scaffold.md`), so this component can prerender. A component that awaits an uncached DAL read, such as one that calls `requireUser()`, renders inside `<Suspense>` or below a `loading.tsx`.
+
 ```tsx
 // src/components/services/service-list.tsx
-import { db } from "@/lib/db";
+import { getServices } from "@/lib/dal";
 import { ServiceCard } from "./service-card";
 
 export async function ServiceList() {
-  const services = await db.service.findMany({
-    where: { published: true },
-    orderBy: { createdAt: "desc" },
-    take: 12,
-  });
+  const services = await getServices();
 
   if (services.length === 0) {
     return <p className="py-8 text-center text-gray-500">No services yet.</p>;
@@ -65,19 +63,29 @@ export function Counter({ initialCount = 0, className }: CounterProps) {
 }
 ```
 
+## Shared Zod Schema
+
+Forms, Server Actions and Route Handlers import the same schema, so client and server rules can't drift. Keep it out of the `"use server"` file: that file can only export async functions.
+
+```ts
+// src/schemas/contact.ts
+import { z } from "zod";
+
+export const contactSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  email: z.email("Invalid email"),
+  message: z.string().min(10, "Message must be at least 10 characters").max(2000),
+});
+```
+
 ## Server Action with Zod Validation
 
 ```ts
-// src/app/actions/contact.ts
+// src/actions/contact.ts
 "use server";
 
 import { z } from "zod";
-
-const contactSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
-  email: z.string().email("Invalid email"),
-  message: z.string().min(10, "Message must be at least 10 characters").max(2000),
-});
+import { contactSchema } from "@/schemas/contact";
 
 type ContactState = {
   success: boolean;
@@ -89,6 +97,7 @@ export async function submitContact(
   _prevState: ContactState,
   formData: FormData
 ): Promise<ContactState> {
+  // A public form, so no requireUser(). Actions that touch user data call it first.
   const result = contactSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -96,7 +105,7 @@ export async function submitContact(
   });
 
   if (!result.success) {
-    return { success: false, errors: result.error.flatten().fieldErrors };
+    return { success: false, errors: z.flattenError(result.error).fieldErrors };
   }
 
   try {
@@ -108,7 +117,76 @@ export async function submitContact(
 }
 ```
 
-## Form with React Hook Form + Zod
+## Form with useActionState (default)
+
+```tsx
+// src/components/forms/contact-form-action.tsx
+"use client";
+
+import { useActionState } from "react";
+import { submitContact } from "@/actions/contact";
+
+export function ContactFormAction() {
+  const [state, formAction, isPending] = useActionState(submitContact, {
+    success: false,
+  });
+
+  return (
+    <form action={formAction} className="space-y-4">
+      <div>
+        <input
+          name="name"
+          placeholder="Name"
+          className="w-full rounded-md border border-gray-300 px-3 py-2"
+        />
+        {state.errors?.name && (
+          <p className="mt-1 text-sm text-red-600">{state.errors.name[0]}</p>
+        )}
+      </div>
+
+      <div>
+        <input
+          name="email"
+          type="email"
+          placeholder="Email"
+          className="w-full rounded-md border border-gray-300 px-3 py-2"
+        />
+        {state.errors?.email && (
+          <p className="mt-1 text-sm text-red-600">{state.errors.email[0]}</p>
+        )}
+      </div>
+
+      <div>
+        <textarea
+          name="message"
+          rows={4}
+          placeholder="Message"
+          className="w-full rounded-md border border-gray-300 px-3 py-2"
+        />
+        {state.errors?.message && (
+          <p className="mt-1 text-sm text-red-600">{state.errors.message[0]}</p>
+        )}
+      </div>
+
+      <button
+        type="submit"
+        disabled={isPending}
+        className="rounded-md bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
+      >
+        {isPending ? "Sending..." : "Send"}
+      </button>
+
+      {state.message && (
+        <p className={state.success ? "text-green-600" : "text-red-600"}>
+          {state.message}
+        </p>
+      )}
+    </form>
+  );
+}
+```
+
+## Form with React Hook Form + Zod (complex client-side forms only)
 
 ```tsx
 // src/components/forms/contact-form.tsx
@@ -118,12 +196,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
-
-const contactSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
-  message: z.string().min(10, "Message must be at least 10 characters"),
-});
+import { contactSchema } from "@/schemas/contact";
 
 type ContactFormData = z.infer<typeof contactSchema>;
 
@@ -214,89 +287,22 @@ export function ContactForm() {
 }
 ```
 
-## Form with useActionState (Server Action)
-
-```tsx
-// src/components/forms/contact-form-action.tsx
-"use client";
-
-import { useActionState } from "react";
-import { submitContact } from "@/app/actions/contact";
-
-export function ContactFormAction() {
-  const [state, formAction, isPending] = useActionState(submitContact, {
-    success: false,
-  });
-
-  return (
-    <form action={formAction} className="space-y-4">
-      <div>
-        <input
-          name="name"
-          placeholder="Name"
-          className="w-full rounded-md border border-gray-300 px-3 py-2"
-        />
-        {state.errors?.name && (
-          <p className="mt-1 text-sm text-red-600">{state.errors.name[0]}</p>
-        )}
-      </div>
-
-      <div>
-        <input
-          name="email"
-          type="email"
-          placeholder="Email"
-          className="w-full rounded-md border border-gray-300 px-3 py-2"
-        />
-        {state.errors?.email && (
-          <p className="mt-1 text-sm text-red-600">{state.errors.email[0]}</p>
-        )}
-      </div>
-
-      <div>
-        <textarea
-          name="message"
-          rows={4}
-          placeholder="Message"
-          className="w-full rounded-md border border-gray-300 px-3 py-2"
-        />
-        {state.errors?.message && (
-          <p className="mt-1 text-sm text-red-600">{state.errors.message[0]}</p>
-        )}
-      </div>
-
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 disabled:opacity-50"
-      >
-        {isPending ? "Sending..." : "Send"}
-      </button>
-
-      {state.message && (
-        <p className={state.success ? "text-green-600" : "text-red-600"}>
-          {state.message}
-        </p>
-      )}
-    </form>
-  );
-}
-```
-
 ## Zustand Store
+
+Zustand holds client UI state only. Create the store per request with `createStore` and hand it out through a context provider: a module-level `create()` store is shared by every request on the server, so one user's state can end up in another user's HTML. Server Components never touch a store; they pass server data to the provider as props.
 
 ```ts
 // src/stores/cart-store.ts
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
 
-type CartItem = {
+export type CartItem = {
   id: string;
   name: string;
   price: number;
   quantity: number;
 };
 
-type CartStore = {
+export type CartStore = {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity">) => void;
   removeItem: (id: string) => void;
@@ -305,39 +311,113 @@ type CartStore = {
   total: () => number;
 };
 
-export const useCartStore = create<CartStore>((set, get) => ({
-  items: [],
-  addItem: (item) =>
-    set((state) => {
-      const existing = state.items.find((i) => i.id === item.id);
-      if (existing) {
-        return {
-          items: state.items.map((i) =>
-            i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-          ),
-        };
-      }
-      return { items: [...state.items, { ...item, quantity: 1 }] };
-    }),
-  removeItem: (id) =>
-    set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
-  updateQuantity: (id, quantity) =>
-    set((state) => ({
-      items: quantity <= 0
-        ? state.items.filter((i) => i.id !== id)
-        : state.items.map((i) => (i.id === id ? { ...i, quantity } : i)),
-    })),
-  clearCart: () => set({ items: [] }),
-  total: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
-}));
+// A factory, not a module-level store: each provider gets its own instance.
+export const createCartStore = (initialItems: CartItem[] = []) =>
+  createStore<CartStore>()((set, get) => ({
+    items: initialItems,
+    addItem: (item) =>
+      set((state) => {
+        const existing = state.items.find((i) => i.id === item.id);
+        if (existing) {
+          return {
+            items: state.items.map((i) =>
+              i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+            ),
+          };
+        }
+        return { items: [...state.items, { ...item, quantity: 1 }] };
+      }),
+    removeItem: (id) =>
+      set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
+    updateQuantity: (id, quantity) =>
+      set((state) => ({
+        items: quantity <= 0
+          ? state.items.filter((i) => i.id !== id)
+          : state.items.map((i) => (i.id === id ? { ...i, quantity } : i)),
+      })),
+    clearCart: () => set({ items: [] }),
+    total: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+  }));
+
+export type CartStoreApi = ReturnType<typeof createCartStore>;
 ```
 
-## Prisma CRUD Queries
+```tsx
+// src/stores/cart-store-provider.tsx
+"use client";
+
+import { createContext, type ReactNode, useContext, useState } from "react";
+import { useStore } from "zustand";
+import {
+  type CartItem,
+  type CartStore,
+  type CartStoreApi,
+  createCartStore,
+} from "@/stores/cart-store";
+
+const CartStoreContext = createContext<CartStoreApi | null>(null);
+
+interface CartStoreProviderProps {
+  children: ReactNode;
+  initialItems?: CartItem[];
+}
+
+export function CartStoreProvider({ children, initialItems }: CartStoreProviderProps) {
+  // The initializer runs once, so re-renders keep the same store
+  const [store] = useState(() => createCartStore(initialItems));
+  return <CartStoreContext value={store}>{children}</CartStoreContext>;
+}
+
+export function useCartStore<T>(selector: (state: CartStore) => T): T {
+  const store = useContext(CartStoreContext);
+  if (!store) throw new Error("useCartStore must be used inside <CartStoreProvider>");
+  return useStore(store, selector);
+}
+```
+
+```tsx
+// src/app/(shop)/layout.tsx
+import { CartStoreProvider } from "@/stores/cart-store-provider";
+
+export default function ShopLayout({ children }: { children: React.ReactNode }) {
+  return <CartStoreProvider>{children}</CartStoreProvider>;
+}
+```
+
+```tsx
+// src/components/cart/cart-count.tsx
+"use client";
+
+import { useCartStore } from "@/stores/cart-store-provider";
+
+export function CartCount() {
+  const count = useCartStore((state) => state.items.length);
+  return <span>{count}</span>;
+}
+```
+
+## Data Access Layer
+
+Every Prisma call lives in `src/lib/dal.ts`, which becomes `lib/dal/<domain>.ts` as it grows. Pages, components, Route Handlers and Server Actions call DAL functions, never `db`. The DAL authorizes: it gets the user from the session with `requireUser()` (Better Auth setup is in `scaffold.md`), never from client input, and scopes owned data by that user. It returns minimal DTOs through `select`, not raw rows. Public reads skip `requireUser()`.
 
 ```ts
-// src/lib/queries/posts.ts
-import { db } from "@/lib/db";
+// src/lib/dal.ts
+import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
+import { Prisma } from "@/generated/prisma/client";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import type { CreatePostInput } from "@/schemas/posts";
+
+/** The signed-in user for this request; redirects to sign-in when there is none. */
+export const requireUser = cache(async () => {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) redirect("/sign-in");
+  return session.user;
+});
 
 // React cache() deduplicates within a single render pass
 export const getPublishedPosts = cache(async (page = 1, perPage = 10) => {
@@ -357,107 +437,192 @@ export const getPublishedPosts = cache(async (page = 1, perPage = 10) => {
 
 export const getPostBySlug = cache(async (slug: string) => {
   return db.post.findUnique({
-    where: { slug },
-    include: { author: { select: { name: true } } },
+    where: { slug, published: true },
+    select: {
+      title: true,
+      content: true,
+      publishedAt: true,
+      author: { select: { name: true } },
+    },
   });
 });
 ```
 
-### Mutations
+### Writes
+
+DAL writes take an ID plus the change and check ownership in the query. Server Actions authenticate, validate with the shared schema, call the DAL, then update the cache.
 
 ```ts
-// src/lib/mutations/posts.ts
-import { db } from "@/lib/db";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-
-const createPostSchema = z.object({
-  title: z.string().min(1).max(200),
-  slug: z.string().min(1).max(200).regex(/^[a-z0-9-]+$/),
-  content: z.string().optional(),
-  authorId: z.string().cuid(),
-});
-
-export async function createPost(data: z.infer<typeof createPostSchema>) {
-  const post = await db.post.create({ data });
-  revalidatePath("/posts");
-  return post;
+// src/lib/dal.ts (continued)
+/** Creates a post owned by the user. Returns null when the slug is already taken. */
+export async function createPost(input: CreatePostInput) {
+  const user = await requireUser();
+  try {
+    return await db.post.create({
+      data: { ...input, authorId: user.id },
+      select: { id: true, slug: true },
+    });
+  } catch (error) {
+    // P2002: unique constraint (the slug). Anything else is unexpected.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return null;
+    }
+    throw error;
+  }
 }
 
-export async function togglePublish(id: string) {
-  const post = await db.post.findUniqueOrThrow({ where: { id } });
-  const updated = await db.post.update({
-    where: { id },
+/**
+ * Publishes or unpublishes a post the user owns. Returns null when it is missing,
+ * not theirs, or was toggled by another request in between.
+ */
+export async function togglePublish(postId: string) {
+  const user = await requireUser();
+  const post = await db.post.findFirst({
+    where: { id: postId, authorId: user.id },
+    select: { published: true, slug: true },
+  });
+  if (!post) return null;
+
+  // Prisma can't flip a boolean in place, so the write is conditional on the
+  // state just read: a concurrent toggle gets count 0 instead of a lost update.
+  const { count } = await db.post.updateMany({
+    where: { id: postId, authorId: user.id, published: post.published },
     data: {
       published: !post.published,
       publishedAt: post.published ? null : new Date(),
     },
   });
+  return count === 1 ? { slug: post.slug } : null;
+}
+```
+
+```ts
+// src/schemas/posts.ts
+import { z } from "zod";
+
+export const createPostSchema = z.object({
+  title: z.string().min(1).max(200),
+  slug: z.string().min(1).max(200).regex(/^[a-z0-9-]+$/),
+  content: z.string().optional(),
+});
+
+export type CreatePostInput = z.infer<typeof createPostSchema>;
+
+export type ActionResult =
+  | { ok: true }
+  | { ok: false; error: string; fieldErrors?: Partial<Record<string, string[]>> };
+```
+
+```ts
+// src/actions/posts.ts
+"use server";
+
+import { revalidatePath, updateTag } from "next/cache";
+import { z } from "zod";
+import { createPost, requireUser, setFeatured, togglePublish } from "@/lib/dal";
+import { type ActionResult, createPostSchema } from "@/schemas/posts";
+
+export async function createPostAction(
+  _prev: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  await requireUser(); // cached: the DAL's own check reuses it
+
+  const parsed = createPostSchema.safeParse({
+    title: formData.get("title"),
+    slug: formData.get("slug"),
+    content: formData.get("content") ?? undefined,
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Check the highlighted fields.",
+      fieldErrors: z.flattenError(parsed.error).fieldErrors,
+    };
+  }
+
+  const post = await createPost(parsed.data);
+  if (!post) {
+    return {
+      ok: false,
+      error: "Check the highlighted fields.",
+      fieldErrors: { slug: ["That slug is already taken."] },
+    };
+  }
+
   revalidatePath("/posts");
-  revalidatePath(`/posts/${updated.slug}`);
-  return updated;
+  return { ok: true };
+}
+
+export async function togglePublishAction(postId: string): Promise<ActionResult> {
+  await requireUser();
+
+  const parsed = z.cuid().safeParse(postId);
+  if (!parsed.success) return { ok: false, error: "Invalid post." };
+
+  const post = await togglePublish(parsed.data);
+  if (!post) {
+    return { ok: false, error: "Post not found or just changed. Reload and try again." };
+  }
+
+  updateTag("posts"); // getFeaturedPosts is tagged "posts"
+  revalidatePath("/posts");
+  revalidatePath(`/posts/${post.slug}`);
+  return { ok: true };
 }
 ```
 
 ## Revalidation Patterns
 
+`"use cache"` needs `cacheComponents: true`, which the scaffold `next.config.ts` sets. With the flag on, request data (`cookies()`, `params`, `searchParams`) must be read under `<Suspense>` or below a `loading.tsx`, and uncached reads need the same or `"use cache"`. In a project without the flag, keep `unstable_cache` for database reads.
+
 ```ts
-// Tag-based revalidation
-import { unstable_cache } from "next/cache";
-import { revalidateTag } from "next/cache";
-import { db } from "@/lib/db";
+// src/lib/dal.ts (continued)
+// Public cached read, tagged so a write can invalidate it
+export async function getFeaturedPosts() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("posts");
 
-// Cached query with tags
-export const getFeaturedPosts = unstable_cache(
-  async () => {
-    return db.post.findMany({
-      where: { published: true, featured: true },
-      take: 6,
-    });
-  },
-  ["featured-posts"],
-  { tags: ["posts"], revalidate: 3600 }
-);
+  return db.post.findMany({
+    where: { published: true, featured: true },
+    select: { id: true, title: true, slug: true, excerpt: true },
+    take: 6,
+  });
+}
 
-// Invalidate after mutation
-export async function updatePost(id: string, data: Record<string, unknown>) {
-  await db.post.update({ where: { id }, data });
-  revalidateTag("posts");
+/** Features or unfeatures a post the user owns. Returns false when it is missing or not theirs. */
+export async function setFeatured(postId: string, featured: boolean) {
+  const user = await requireUser();
+  const { count } = await db.post.updateMany({
+    where: { id: postId, authorId: user.id },
+    data: { featured },
+  });
+  return count === 1;
 }
 ```
 
-## Auth Session Helper
-
 ```ts
-// src/lib/auth.ts
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+// src/actions/posts.ts (continued)
+export async function setFeaturedAction(
+  postId: string,
+  featured: boolean
+): Promise<ActionResult> {
+  await requireUser();
 
-export async function getSession() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  if (!token) return null;
+  const parsed = z
+    .object({ postId: z.cuid(), featured: z.boolean() })
+    .safeParse({ postId, featured });
+  if (!parsed.success) return { ok: false, error: "Invalid input." };
 
-  const session = await db.session.findUnique({
-    where: { token },
-    include: { user: { select: { id: true, email: true, name: true, role: true } } },
-  });
+  const updated = await setFeatured(parsed.data.postId, parsed.data.featured);
+  if (!updated) return { ok: false, error: "Post not found." };
 
-  if (!session || session.expiresAt < new Date()) return null;
-  return session.user;
-}
-
-export async function requireAuth() {
-  const user = await getSession();
-  if (!user) redirect("/login");
-  return user;
-}
-
-export async function requireAdmin() {
-  const user = await requireAuth();
-  if (user.role !== "ADMIN") redirect("/unauthorized");
-  return user;
+  // updateTag(): the user sees their own write on the next render.
+  // revalidateTag("posts", "max") instead serves stale data while it refreshes
+  // (Next.js 16 requires the profile argument).
+  updateTag("posts");
+  return { ok: true };
 }
 ```
 
@@ -465,16 +630,25 @@ export async function requireAdmin() {
 
 ```tsx
 // src/app/dashboard/page.tsx
-import { requireAuth } from "@/lib/auth";
+import { Suspense } from "react";
+import { requireUser } from "@/lib/dal";
 
-export default async function DashboardPage() {
-  const user = await requireAuth();
-
+// The page stays static. The session read happens in a child under <Suspense>
+// and streams in at request time.
+export default function DashboardPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-12">
-      <h1 className="text-2xl font-bold">Welcome, {user.name}</h1>
+      <Suspense fallback={<p className="text-gray-500">Loading...</p>}>
+        <Welcome />
+      </Suspense>
     </main>
   );
+}
+
+async function Welcome() {
+  const user = await requireUser();
+
+  return <h1 className="text-2xl font-bold">Welcome, {user.name}</h1>;
 }
 ```
 
@@ -482,20 +656,38 @@ export default async function DashboardPage() {
 
 ```tsx
 // src/app/posts/page.tsx
-import { getPublishedPosts } from "@/lib/queries/posts";
+import { Suspense } from "react";
+import { z } from "zod";
+import { getPublishedPosts } from "@/lib/dal";
 import { Pagination } from "@/components/ui/pagination";
 
 type Props = {
   searchParams: Promise<{ page?: string; q?: string }>;
 };
 
-export default async function PostsPage({ searchParams }: Props) {
-  const { page, q } = await searchParams;
-  const currentPage = Math.max(1, Number(page) || 1);
+// Anything but a positive integer (2.25, -3, Infinity, abc) falls back to page 1,
+// so Prisma's skip always gets a valid offset.
+const pageSchema = z.coerce.number().int().positive().catch(1);
+
+// searchParams is only known at request time. Pass the promise to a child
+// under <Suspense> instead of awaiting it here.
+export default function PostsPage({ searchParams }: Props) {
+  return (
+    <main className="mx-auto max-w-7xl px-4 py-12">
+      <Suspense fallback={<p className="text-gray-500">Loading posts...</p>}>
+        <PostResults searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function PostResults({ searchParams }: Props) {
+  const { page } = await searchParams;
+  const currentPage = pageSchema.parse(page);
   const { posts, totalPages } = await getPublishedPosts(currentPage, 10);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12">
+    <>
       <div className="grid gap-6">
         {posts.map((post) => (
           <article key={post.id}>
@@ -504,7 +696,7 @@ export default async function PostsPage({ searchParams }: Props) {
         ))}
       </div>
       <Pagination currentPage={currentPage} totalPages={totalPages} />
-    </main>
+    </>
   );
 }
 ```
