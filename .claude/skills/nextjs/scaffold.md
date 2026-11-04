@@ -32,7 +32,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ```tsx
 // src/app/services/page.tsx
 import type { Metadata } from "next";
-import { getServices } from "@/lib/queries/services";
 import { ServiceList } from "@/components/services/service-list";
 
 export const metadata: Metadata = {
@@ -40,17 +39,12 @@ export const metadata: Metadata = {
   description: "Our services",
 };
 
-export default async function ServicesPage() {
-  const services = await getServices();
-
-  if (services.length === 0) {
-    return <p className="py-12 text-center text-gray-500">No services found.</p>;
-  }
-
+// ServiceList reads through the DAL and handles the empty state itself.
+export default function ServicesPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-12">
       <h1 className="mb-8 text-3xl font-bold">Services</h1>
-      <ServiceList services={services} />
+      <ServiceList />
     </main>
   );
 }
@@ -62,15 +56,23 @@ export default async function ServicesPage() {
 // src/app/services/[slug]/page.tsx
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getServiceBySlug, getServiceSlugs } from "@/lib/queries/services";
+import { Suspense } from "react";
+import { getServiceBySlug, getServiceSlugs } from "@/lib/dal";
 
 type Props = { params: Promise<{ slug: string }> };
 
+// Cache Components needs at least one param here, or the build fails. With no
+// published service yet, return a placeholder: no service has this slug, so the
+// page below answers it with notFound().
+const PLACEHOLDER_SLUG = "__placeholder__";
+
 export async function generateStaticParams() {
   const slugs = await getServiceSlugs();
+  if (slugs.length === 0) return [{ slug: PLACEHOLDER_SLUG }];
   return slugs.map((slug) => ({ slug }));
 }
 
+// The database read is a cached query, so the metadata can prerender.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const service = await getServiceBySlug(slug);
@@ -78,17 +80,75 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: service.title, description: service.excerpt };
 }
 
-export default async function ServicePage({ params }: Props) {
+// The page does not await params. It passes the promise to a child under
+// <Suspense>, so the shell also prerenders for slugs not known at build time.
+export default function ServicePage({ params }: Props) {
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-12">
+      <Suspense fallback={<p className="text-gray-500">Loading...</p>}>
+        <ServiceContent params={params} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function ServiceContent({ params }: Props) {
   const { slug } = await params;
   const service = await getServiceBySlug(slug);
   if (!service) notFound();
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
+    <>
       <h1 className="mb-4 text-3xl font-bold">{service.title}</h1>
       <div className="prose max-w-none">{service.content}</div>
-    </main>
+    </>
   );
+}
+```
+
+## Cached Queries
+
+Reads that many requests share go through `"use cache"` functions in the data access layer. A page can then await them at the top and still prerender. Public reads like these skip `requireUser()` (see Data Access Layer in `patterns.md`): a `"use cache"` function can't read cookies or headers.
+
+```ts
+// src/lib/dal.ts
+import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/lib/db";
+
+export async function getServices() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("services");
+
+  return db.service.findMany({
+    where: { published: true },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, title: true, slug: true, excerpt: true },
+  });
+}
+
+export async function getServiceSlugs() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("services");
+
+  const services = await db.service.findMany({
+    where: { published: true },
+    select: { slug: true },
+  });
+  return services.map((service) => service.slug);
+}
+
+export async function getServiceBySlug(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("services");
+
+  return db.service.findUnique({
+    where: { slug, published: true },
+    select: { title: true, excerpt: true, content: true },
+  });
 }
 ```
 
@@ -97,6 +157,7 @@ export default async function ServicePage({ params }: Props) {
 ```ts
 // src/app/api/contact/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { contactSchema } from "@/schemas/contact";
 
 export async function POST(request: NextRequest) {
@@ -105,7 +166,7 @@ export async function POST(request: NextRequest) {
 
   if (!result.success) {
     return NextResponse.json(
-      { error: "Validation failed", issues: result.error.flatten().fieldErrors },
+      { error: "Validation failed", issues: z.flattenError(result.error).fieldErrors },
       { status: 400 }
     );
   }
@@ -119,48 +180,64 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-## Middleware
+## Proxy
+
+Next.js 16 renamed `middleware.ts` to `proxy.ts` (Node.js runtime only). On Next.js 15, keep `src/middleware.ts` exporting `middleware`. Use it for optimistic checks: is there a session cookie, no database calls. Real authorization happens in the data access layer and Server Actions.
 
 ```ts
-// src/middleware.ts
-import { NextRequest, NextResponse } from "next/server";
+// src/proxy.ts
+import { getSessionCookie } from "better-auth/cookies";
+import { type NextRequest, NextResponse } from "next/server";
 
-const protectedPaths = ["/dashboard", "/settings", "/admin"];
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
-
-  if (isProtected) {
-    const token = request.cookies.get("session")?.value;
-    if (!token) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+// Optimistic only: checks that a session cookie exists. The DAL validates the
+// session on every read and action.
+export function proxy(request: NextRequest) {
+  if (!getSessionCookie(request)) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
   }
-
   return NextResponse.next();
 }
 
-export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
-};
+export const config = { matcher: ["/dashboard/:path*", "/settings/:path*"] };
 ```
 
 ## Prisma Setup
 
 ### Client singleton
 
+Prisma 7 generates the client into the project and connects through a driver adapter (`@prisma/adapter-pg`). Run `prisma generate` after changing the schema. Only the data access layer (`lib/dal.ts`) and the Better Auth adapter (`lib/auth.ts`) import `db`. It has no `import "server-only"`: the Better Auth CLI loads `auth.ts` and `db.ts` and exits when it meets that import. `dal.ts` keeps the guard.
+
 ```ts
 // src/lib/db.ts
-import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@/generated/prisma/client";
+import { env } from "@/lib/env";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const db = globalForPrisma.prisma ?? new PrismaClient();
+export const db =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+  });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+```
+
+### prisma.config.ts
+
+```ts
+// prisma.config.ts
+import "dotenv/config";
+import { defineConfig } from "prisma/config";
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  migrations: { path: "prisma/migrations", seed: "tsx prisma/seed.ts" },
+  // process.env, not Prisma's env(): env() throws when the variable is unset,
+  // which breaks `prisma generate` on CI and Docker installs.
+  datasource: { url: process.env.DATABASE_URL },
+});
 ```
 
 ### Schema example
@@ -168,32 +245,25 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 ```prisma
 // prisma/schema.prisma
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      Role     @default(USER)
-  posts     Post[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("users")
-}
+// User, Session, Account and Verification come from the Better Auth CLI (see
+// Better Auth below). Add `posts Post[]` to the generated User model.
 
 model Post {
   id          String   @id @default(cuid())
   title       String
   slug        String   @unique
+  excerpt     String?
   content     String?
   published   Boolean  @default(false)
+  featured    Boolean  @default(false)
   author      User     @relation(fields: [authorId], references: [id])
   authorId    String   @map("author_id")
   publishedAt DateTime? @map("published_at")
@@ -205,10 +275,117 @@ model Post {
   @@map("posts")
 }
 
-enum Role {
-  USER
-  ADMIN
+model Service {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  excerpt   String?
+  content   String?
+  published Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("services")
 }
+```
+
+## Better Auth
+
+Generate the auth models with `pnpm dlx auth@<installed better-auth version> generate`, then run a Prisma migration. The env needs `BETTER_AUTH_SECRET` (32+ chars) and `BETTER_AUTH_URL`.
+
+Sign-up is off (`disableSignUp: true`), which also blocks `auth.api.signUpEmail` on the server. Create accounts in a seed script (see First Account below) or an admin-only action: with Better Auth's admin plugin, `auth.api.createUser` works server-side without a session. Remove the flag only on sites where anyone may register.
+
+```ts
+// src/lib/auth.ts
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
+import { db } from "@/lib/db";
+
+// Reads BETTER_AUTH_SECRET and BETTER_AUTH_URL from the environment. The schema
+// CLI looks for this `auth` export.
+export const auth = betterAuth({
+  database: prismaAdapter(db, { provider: "postgresql" }),
+  emailAndPassword: { enabled: true, disableSignUp: true }, // invite-only
+  plugins: [nextCookies()], // must stay last
+});
+```
+
+```ts
+// src/app/api/auth/[...all]/route.ts
+import { toNextJsHandler } from "better-auth/next-js";
+import { auth } from "@/lib/auth";
+
+export const { GET, POST } = toNextJsHandler(auth);
+```
+
+```ts
+// src/lib/auth-client.ts
+import { createAuthClient } from "better-auth/react";
+
+export const authClient = createAuthClient();
+```
+
+If `next build` must run without auth secrets, wrap `betterAuth()` in a lazy `getAuth()` that builds the instance on first call and reads `authEnv()` (see Env Validation).
+
+### First Account
+
+`prisma db seed` runs `prisma/seed.ts` (wired in `prisma.config.ts`). It does what the admin plugin's `createUser` does, through Better Auth's adapter rather than Prisma: a user plus a `credential` account with a hashed password. Set `SEED_EMAIL` and `SEED_PASSWORD` in `.env`, then run `pnpm prisma db seed`. Re-running skips an account that already has a password and finishes one whose password link failed.
+
+```ts
+// prisma/seed.ts
+import "dotenv/config";
+import { z } from "zod";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+
+const { SEED_EMAIL, SEED_PASSWORD, SEED_NAME } = z
+  .object({
+    SEED_EMAIL: z.email(),
+    // Better Auth's default limits; this path skips its own checks
+    SEED_PASSWORD: z.string().min(8).max(128),
+    SEED_NAME: z.string().min(1).default("Owner"),
+  })
+  .parse(process.env);
+
+async function main() {
+  const ctx = await auth.$context;
+  const email = SEED_EMAIL.toLowerCase();
+  // Hash first, so a failure here leaves no half-created user behind
+  const password = await ctx.password.hash(SEED_PASSWORD);
+
+  const existing = await ctx.internalAdapter.findUserByEmail(email, {
+    includeAccounts: true,
+  });
+  if (existing?.accounts.some((account) => account.providerId === "credential")) {
+    console.info(`${email} already exists, skipped`);
+    return;
+  }
+
+  // A user without a credential account comes from a run that failed midway
+  const user =
+    existing?.user ??
+    (await ctx.internalAdapter.createUser({
+      email,
+      name: SEED_NAME,
+      emailVerified: true,
+    }));
+  await ctx.internalAdapter.linkAccount({
+    userId: user.id,
+    providerId: "credential",
+    accountId: user.id,
+    password,
+  });
+  console.info(existing ? `Linked a password to ${email}` : `Created ${email}`);
+}
+
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  // The pg pool would otherwise keep the process alive until its idle timeout
+  .finally(() => db.$disconnect());
 ```
 
 ## Env Validation
@@ -217,14 +394,27 @@ enum Role {
 // src/lib/env.ts
 import { z } from "zod";
 
+// Needed by the build and every request: checked when the module loads.
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SITE_URL: z.string().url(),
-  SESSION_SECRET: z.string().min(32),
+  DATABASE_URL: z.url(),
+  NEXT_PUBLIC_SITE_URL: z.url(),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
 export const env = envSchema.parse(process.env);
+
+// Request-time only: checked on first use, so `next build` runs without them.
+const authSchema = z.object({
+  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_URL: z.url(),
+});
+
+let authEnvCache: z.infer<typeof authSchema> | undefined;
+
+export function authEnv() {
+  authEnvCache ??= authSchema.parse(process.env);
+  return authEnvCache;
+}
 ```
 
 ## cn() Utility
@@ -285,6 +475,7 @@ export default function Loading() {
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**.example.com" },
@@ -307,30 +498,35 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-### tailwind.config.ts
+### globals.css (Tailwind CSS 4)
 
-```ts
-import type { Config } from "tailwindcss";
+Tailwind CSS 4 is configured in CSS. There is no `tailwind.config.ts` and no `content` list: sources are detected automatically.
 
-const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-      },
-      colors: {
-        brand: {
-          50: "#f0f7ff",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          900: "#1e3a5f",
-        },
-      },
-    },
+```css
+/* src/app/globals.css */
+@import "tailwindcss";
+
+/* inline: --font-inter is set at runtime by next/font in the root layout */
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+@theme {
+  --color-brand-50: #f0f7ff;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-900: #1e3a5f;
+}
+```
+
+### postcss.config.mjs
+
+```js
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
   },
-  plugins: [],
 };
 
 export default config;
@@ -374,6 +570,7 @@ out/
 !.env.example
 *.tsbuildinfo
 next-env.d.ts
+src/generated/
 ```
 
 ### .env.example
@@ -381,5 +578,6 @@ next-env.d.ts
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
-SESSION_SECRET="change-me-to-a-random-32-char-string"
+BETTER_AUTH_SECRET="change-me-to-a-random-32-char-string"
+BETTER_AUTH_URL="http://localhost:3000"
 ```
